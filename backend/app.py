@@ -87,6 +87,16 @@ def get_all_users():
     users = User.query.all()
     return success_response([u.serialize() for u in users])
 
+@app.route("/users/<int:id>/", methods=["GET"])
+def get_user_with_trailing(id):
+    """
+    Retrieves a user by id (trailing slash variant).
+    """
+    user = User.query.get(id)
+    if user is None:
+        return failure_response("user not found", 404)
+    return success_response(user.serialize())
+
 @app.route("/courses/", methods=["POST"])
 def post_course():
     """
@@ -338,6 +348,72 @@ def get_profile(id):
     profile = Profile.query.get(id)
     if not profile:
         return failure_response("profile not found", 404)
+    return success_response(profile.serialize())
+
+@app.route("/profiles/<int:id>/", methods=["PUT"])
+def update_profile(id):
+    """
+    Updates a profile by id. Provide any of the fields to update.
+    Request body:
+    {
+        "study_area_id": <INT>,
+        "course_ids": <[INT]>,
+        "study_time_ids": <[INT]>,
+        "major_ids": <[INT]>
+    }
+    """
+    profile = Profile.query.get(id)
+    if not profile:
+        return failure_response("profile not found", 404)
+
+    body = json.loads(request.data or "{}")
+
+    def gather_related(model, ids, label):
+        if ids is None:
+            return None
+        if not isinstance(ids, list):
+            raise ValueError(f"{label} must be a list")
+        records = []
+        missing = []
+        for item_id in ids:
+            obj = model.query.get(item_id)
+            if obj:
+                records.append(obj)
+            else:
+                missing.append(item_id)
+        if missing:
+            raise LookupError(f"invalid {label}: {missing}")
+        return records
+
+    if "study_area_id" in body:
+        study_area_id = body.get("study_area_id")
+        if study_area_id is None:
+            profile.study_area = None
+            profile.study_area_id = None
+        else:
+            area = StudyArea.query.get(study_area_id)
+            if not area:
+               return failure_response("study area not found", 404)
+            profile.study_area = area
+            profile.study_area_id = study_area_id
+
+    try:
+        courses = gather_related(Course, body.get("course_ids"), "course_ids")
+        study_times = gather_related(StudyTime, body.get("study_time_ids"), "study_time_ids")
+        majors = gather_related(Major, body.get("major_ids"), "major_ids")
+    except ValueError as ve:
+        return failure_response(str(ve), 400)
+    except LookupError as le:
+        return failure_response(str(le))
+
+    if courses is not None:
+        profile.courses = courses
+    if study_times is not None:
+        profile.study_times = study_times
+    if majors is not None:
+        profile.majors = majors
+
+    db.session.commit()
     return success_response(profile.serialize())
 
 if __name__ == "__main__":
