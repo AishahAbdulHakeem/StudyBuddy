@@ -9,7 +9,7 @@ import SwiftUI
 
 struct FindYourMatch: View {
     var body: some View {
-        NavigationStack {
+        NavigationStack{
             ZStack {
                 Color(hex: 0x9E122C)
                     .ignoresSafeArea()
@@ -18,7 +18,7 @@ struct FindYourMatch: View {
                     .scaledToFit()
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
-                    .ignoresSafeArea() 
+                    .ignoresSafeArea()
                 
                 VStack {
                     Image(.findYourMatch)
@@ -63,16 +63,20 @@ struct FindYourMatch: View {
                             .accessibilityHidden(true)
                         Spacer()
                     }
-                    .padding(.top, 30)    // adjust to match your mock
+                    .padding(.top, 30)
                     .padding(.leading, 30)
                     
                     Spacer()
                 }
-                .ignoresSafeArea(.keyboard) // keep pinned even when keyboard shows
+                .ignoresSafeArea(.keyboard)
             }
+            .navigationBarBackButtonHidden(true)
         }
     }
 }
+
 #Preview {
-    FindYourMatch()
+    NavigationStack {
+        FindYourMatch()
+    }
 }

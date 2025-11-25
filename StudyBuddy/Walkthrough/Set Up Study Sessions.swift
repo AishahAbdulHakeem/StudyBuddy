@@ -9,18 +9,18 @@ import SwiftUI
 
 struct SetUpStudySessions: View {
     var body: some View {
-        NavigationStack {
+        NavigationStack{
             ZStack {
                 Color(hex: 0x9E122C)
                     .ignoresSafeArea()
-
+                
                 Image(.setUpStudySessionsImg)
                     .resizable()
                     .scaledToFit()
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
-
+                
                 VStack {
                     Spacer()
                     Text("Set up study sessions!")
@@ -31,7 +31,7 @@ struct SetUpStudySessions: View {
                         .padding(.vertical, 20)
                         .padding(.horizontal, 56)
                         .foregroundStyle(Color(hex: 0x9E122C))
-
+                    
                     HStack {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 12))
@@ -68,8 +68,7 @@ struct SetUpStudySessions: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
-
-            
+                
                 VStack {
                     HStack {
                         Image(.studyBuddyLogo)
@@ -78,18 +77,20 @@ struct SetUpStudySessions: View {
                             .accessibilityHidden(true)
                         Spacer()
                     }
-                    .padding(.top, 30)    // adjust to match your mock
+                    .padding(.top, 30)
                     .padding(.leading, 30)
-
+                    
                     Spacer()
                 }
-                .ignoresSafeArea(.keyboard) // keep pinned even when keyboard shows
+                .ignoresSafeArea(.keyboard)
             }
-           
+            .navigationBarBackButtonHidden(true)
         }
     }
 }
 
 #Preview {
-    SetUpStudySessions()
+    NavigationStack {
+        SetUpStudySessions()
+    }
 }
