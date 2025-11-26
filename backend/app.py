@@ -1,6 +1,6 @@
-import json
+import json, datetime
 from flask import Flask, jsonify, request
-from db import  User, Profile, Course, StudyArea, StudyTime, Major, db
+from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
@@ -415,6 +415,139 @@ def update_profile(id):
 
     db.session.commit()
     return success_response(profile.serialize())
+
+
+@app.route("/messages/", methods=["POST"])
+def send_message():
+    """
+    Sends a message from one user to another.
+    Request body:
+    {
+        "sender_id": <INT, required>,
+        "receiver_id": <INT, required>,
+        "content": <STRING, required>
+    }
+    """
+    body = json.loads(request.data)
+    sender_id = body.get("sender_id")
+    receiver_id = body.get("receiver_id")
+    content = body.get("content")
+
+    if not sender_id or not receiver_id or not content:
+        return failure_response("sender_id, receiver_id, and content are required", 400)
+
+    sender = User.query.get(sender_id)
+    receiver = User.query.get(receiver_id)
+
+    if not sender or not receiver:
+        return failure_response("Sender or receiver not found", 404)
+        
+    if sender_id == receiver_id:
+        return failure_response("Cannot send a message to yourself", 400)
+
+    message = Message(
+        sender_id=sender_id,
+        receiver_id=receiver_id,
+        content=content
+    )
+    
+    db.session.add(message)
+    db.session.commit()
+    
+    return success_response(message.serialize(), 201)
+
+@app.route("/users/<int:user_id>/messages/")
+def get_user_messages(user_id):
+    """
+    Retrieves all messages sent to and received by a specific user, sorted by timestamp.
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return failure_response("User not found", 404)
+
+    # Query for messages sent *or* received by the user
+    messages = Message.query.filter(
+        (Message.sender_id == user_id) | (Message.receiver_id == user_id)
+    ).order_by(Message.timestamp.asc()).all()
+    
+    return success_response([m.serialize() for m in messages])
+
+
+def parse_time(time_str):
+    """
+    Helper function to parse a time string into a datetime object.
+    Supports a simple ISO-like format (YYYY-MM-DD HH:MM:SS).
+    """
+    try:
+        # Example format: "2025-12-25 10:30:00"
+        return datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+
+# --- New Meeting Routes ---
+@app.route("/meetings/", methods=["POST"])
+def create_meeting():
+    """
+    Creates a meeting between two users and schedules it.
+    Request body:
+    {
+        "user1_id": <INT, required>,
+        "user2_id": <INT, required>,
+        "time": <STRING, required, format: "YYYY-MM-DD HH:MM:SS">,
+        "location": <STRING, optional>
+    }
+    """
+    body = json.loads(request.data)
+    user1_id = body.get("user1_id")
+    user2_id = body.get("user2_id")
+    time_str = body.get("time")
+    location = body.get("location")
+
+    if not user1_id or not user2_id or not time_str:
+        return failure_response("user1_id, user2_id, and time are required", 400)
+
+    user1 = User.query.get(user1_id)
+    user2 = User.query.get(user2_id)
+
+    if not user1 or not user2:
+        return failure_response("One or both users not found", 404)
+        
+    if user1_id == user2_id:
+        return failure_response("Cannot schedule a meeting with yourself", 400)
+    
+    meeting_time = parse_time(time_str)
+    if meeting_time is None:
+        return failure_response("Invalid time format. Use YYYY-MM-DD HH:MM:SS", 400)
+
+    meeting = Meeting(
+        user1_id=user1_id,
+        user2_id=user2_id,
+        time=meeting_time,
+        location=location
+    )
+    
+    db.session.add(meeting)
+    db.session.commit()
+    
+    return success_response(meeting.serialize(), 201)
+
+
+@app.route("/users/<int:user_id>/meetings/")
+def get_user_meetings(user_id):
+    """
+    Retrieves all meetings scheduled for a specific user, sorted by time.
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return failure_response("User not found", 404)
+
+    # Query for meetings where the user is either user1 or user2
+    meetings = Meeting.query.filter(
+        (Meeting.user1_id == user_id) | (Meeting.user2_id == user_id)
+    ).order_by(Meeting.time.asc()).all()
+    
+    return success_response([m.serialize() for m in meetings])
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
