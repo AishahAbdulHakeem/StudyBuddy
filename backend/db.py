@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+import datetime
 
 db = SQLAlchemy()
 
@@ -243,3 +244,79 @@ class Major(db.Model):
          "id": self.id,
          "name": self.name,
       }
+   
+
+class Message(db.Model):
+   """
+   Depicts a private message between two users.
+   """
+   __tablename__ = "messages"
+   id = db.Column(db.Integer, primary_key=True)
+   sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+   receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+   content = db.Column(db.String(5000), nullable=False)
+   timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+   sender = db.relationship("User", foreign_keys=[sender_id], backref="sent_messages")
+   receiver = db.relationship("User", foreign_keys=[receiver_id], backref="received_messages")
+
+   def __init__(self, **kwargs):
+      """
+      Initializes a Message.
+      """
+      self.sender_id = kwargs.get("sender_id")
+      self.receiver_id = kwargs.get("receiver_id")
+      self.content = kwargs.get("content", "")
+
+   def serialize(self):
+      """
+      Serializes a Message.
+      """
+      return {
+         "id": self.id,
+         "sender_id": self.sender_id,
+         "receiver_id": self.receiver_id,
+         "content": self.content,
+         # Format the timestamp for readability
+         "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if self.timestamp else None
+      }
+   
+
+   
+class Meeting(db.Model): # ADDED NEW MODEL
+   """
+   Depicts a scheduled meeting between two users.
+   """
+   __tablename__ = "meetings"
+   id = db.Column(db.Integer, primary_key=True)
+   user1_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+   user2_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+   time = db.Column(db.DateTime, nullable=False)
+   location = db.Column(db.String(255), nullable=True)
+   
+   # Relationships to link users (using foreign_keys to distinguish user roles)
+   user1 = db.relationship("User", foreign_keys=[user1_id], backref="meetings_as_user1")
+   user2 = db.relationship("User", foreign_keys=[user2_id], backref="meetings_as_user2")
+
+   def __init__(self, **kwargs):
+      """
+      Initializes a Meeting.
+      """
+      self.user1_id = kwargs.get("user1_id")
+      self.user2_id = kwargs.get("user2_id")
+      # Expecting 'time' as a datetime object or string that can be parsed
+      self.time = kwargs.get("time") 
+      self.location = kwargs.get("location")
+
+   def serialize(self):
+      """
+      Serializes a Meeting.
+      """
+      return {
+         "id": self.id,
+         "user1_id": self.user1_id,
+         "user2_id": self.user2_id,
+         "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
+         "location": self.location,
+      }
+
