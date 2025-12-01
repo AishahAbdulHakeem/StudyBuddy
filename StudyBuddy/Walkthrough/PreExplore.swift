@@ -1,52 +1,51 @@
 //
-//  ContentView.swift
+//  PreExplore.swift
 //  StudyBuddy
 //
-//  Created by black dune house loaner on 11/24/25.
+//  Created by black dune house loaner on 12/1/25.
 //
 
 import SwiftUI
 
+struct LoadingPreExploreView: View {
+    var body: some View {
+        
+//            Color(hex: 0xFFFFFF)
+//                .ignoresSafeArea()
+            HStack {
+                Image(.studyBuddyLogoRed)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 56, height: 64)
+                    .foregroundStyle(Color(.white))
+                Image(.studyBuddyTextRed) // A standard SwiftUI progress indicator
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 160, height: 41)
+                    .foregroundStyle(Color(.white))
 
-struct LoadingIndicatorView: View {
+        }
+            .padding (386)
+    }
+}
+struct LoadedPreExploreView: View {
     var body: some View {
         ZStack {
-            Color(hex: 0xB40023)
+            Color(hex: 0xFFFFFF)
                 .ignoresSafeArea()
-            VStack {
-                Image(.studyBuddyLogo)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220, height: 85)
-                    .foregroundStyle(Color(.white))
-                Image(.studyBuddy) // A standard SwiftUI progress indicator
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220, height: 220)
-                    .foregroundStyle(Color(.white))
-            }
+//            ExplorePage()
+            HomePage()
         }
     }
 }
-struct LoadedContentView: View {
-    var body: some View {
-        ZStack {
-            Color(hex: 0xB40023)
-                .ignoresSafeArea()
-//            Text("Welcome to StudyBuddy!")
-//                .font(.title)
-            SwipeThroughProfiles()
-        }
-    }
-}
-struct ContentView: View {
+struct PreExplore: View {
     @State private var isLoading = true
             var body: some View {
                 VStack {
                     if isLoading {
-                        LoadingIndicatorView() // A custom view for the loading state
+                        LoadingPreExploreView() // A custom view for the loading state
                     } else {
-                        LoadedContentView() // The actual content to display after loading
+                        LoadedPreExploreView() // The actual content to display after loading
                     }
                 }
                 .onAppear {
@@ -60,5 +59,5 @@ struct ContentView: View {
 
 
 #Preview {
-    ContentView()
+    PreExplore()
 }

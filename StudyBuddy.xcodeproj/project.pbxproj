@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		C4289B252ED60EEC00BCDD5C /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = C4289B242ED60EEC00BCDD5C /* Alamofire */; };
+		DE98B46A2EDE56DE00875E6C /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = DE98B4692EDE56DE00875E6C /* File.txt */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		C4DF81E52ED59CDE001315ED /* StudyBuddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StudyBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE98B4692EDE56DE00875E6C /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -37,6 +39,7 @@
 		DE98B3D82ED51C9F00875E6C = {
 			isa = PBXGroup;
 			children = (
+				DE98B4692EDE56DE00875E6C /* File.txt */,
 				DE98B3E32ED51CA000875E6C /* StudyBuddy */,
 				C4DF81E52ED59CDE001315ED /* StudyBuddy.app */,
 			);
@@ -110,6 +113,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DE98B46A2EDE56DE00875E6C /* File.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
