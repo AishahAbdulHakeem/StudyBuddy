@@ -545,6 +545,7 @@ def create_meeting():
         "user1_id": <INT, required>,
         "user2_id": <INT, required>,
         "time": <STRING, required, format: "YYYY-MM-DD HH:MM:SS">,
+        "name": <STRING, optional>,
         "location": <STRING, optional>,
         "description": <STRING, optional>
     }
@@ -553,6 +554,7 @@ def create_meeting():
     user1_id = body.get("user1_id")
     user2_id = body.get("user2_id")
     time_str = body.get("time")
+    name = body.get("name")
     location = body.get("location")
     description = body.get("description")
 
@@ -576,6 +578,7 @@ def create_meeting():
         user1_id=user1_id,
         user2_id=user2_id,
         time=meeting_time,
+        name=name,
         location=location,
         description=description,
     )

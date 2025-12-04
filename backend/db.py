@@ -307,6 +307,7 @@ class Meeting(db.Model): # ADDED NEW MODEL
    user2_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
    time = db.Column(db.DateTime, nullable=False)
    location = db.Column(db.String(255), nullable=True)
+   name = db.Column(db.String(255), nullable=True)
    description = db.Column(db.String(1000), nullable=True)
    
    # Relationships to link users (using foreign_keys to distinguish user roles)
@@ -322,6 +323,7 @@ class Meeting(db.Model): # ADDED NEW MODEL
       # Expecting 'time' as a datetime object or string that can be parsed
       self.time = kwargs.get("time") 
       self.location = kwargs.get("location")
+      self.name = kwargs.get("name")
       self.description = kwargs.get("description")
 
    def serialize(self):
@@ -334,6 +336,7 @@ class Meeting(db.Model): # ADDED NEW MODEL
          "user2_id": self.user2_id,
          "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
          "location": self.location,
+         "name": self.name,
          "description": self.description,
       }
    
