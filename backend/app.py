@@ -17,7 +17,7 @@ def success_response(data, code=200):
 def failure_response(data, code=404):
     return json.dumps({"error": data}), code
 
-MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB cap for avatar blobs
+MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024  # 2MB cap for avatar blobs
 
 @app.route("/signup/", methods=["POST"])
 def signup():
@@ -423,7 +423,7 @@ def update_profile(id):
 def upload_profile_image(id):
     """
     Uploads a profile image as a blob for a given profile.
-    Multipart form field: "image"
+    Multipart form field: "image" (Use 'image' as the key when inputting)
     """
     profile = Profile.query.get(id)
     if not profile:
