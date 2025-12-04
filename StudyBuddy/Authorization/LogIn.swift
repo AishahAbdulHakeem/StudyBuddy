@@ -11,9 +11,11 @@ struct LogIn: View {
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
+    @State private var gotoPreExplorePage  = false
     
     private let brandRed = Color(hex: 0x9E122C)
     private let fieldBorder = Color(.systemGray3)
+    
     
     var body: some View {
         
@@ -101,10 +103,17 @@ struct LogIn: View {
                                 
                                 
                             }
+                            NavigationLink(
+                                destination: PreExplore(),
+                                isActive: $gotoPreExplorePage
+                            ) {
+                                EmptyView()
+                            }
+                            .hidden()
                             
                             // Sign up button
                             Button {
-                                // TODO: Hook up sign-up action
+                                gotoPreExplorePage = true
                             } label: {
                                 Text("Log In")
                                     .font(.system(size: 22, weight: .bold))

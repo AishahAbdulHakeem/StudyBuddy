@@ -9,7 +9,10 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileSetUp: View {
-    // MARK: - State
+    // MARK: - Shared model (kept local, passed forward)
+    @StateObject private var profile = Profile()
+    
+    // MARK: - State (local input fields)
     @State private var name: String = ""
     @State private var major: String = ""
     @State private var favoriteArea: String = ""
@@ -18,32 +21,15 @@ struct ProfileSetUp: View {
     @State private var courseInput: String = ""
     @State private var courses: [String] = []
     
-    // Study time multi-select
-    enum StudyTime: String, CaseIterable, Identifiable {
-        case morning, day, night
-        var id: String { rawValue }
-        
-        var systemImage: String {
-            switch self {
-            case .morning: return "sunrise.fill"
-            case .day:     return "sun.max.fill"
-            case .night:   return "moon.stars.fill"
-            }
-        }
-        
-        var label: String {
-            switch self {
-            case .morning: return "Morning"
-            case .day:     return "Day"
-            case .night:   return "Night"
-            }
-        }
-    }
-    @State private var selectedTimes: Set<StudyTime> = []
+    // Study time multi-select (reuse model enum)
+    @State private var selectedTimes: Set<Profile.StudyTime> = []
     
     // Photo
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    
+    // Navigation
+    @State private var goToProfile = false
     
     // Styling
     private let brandRed = Color(hex: 0x9E122C)
@@ -80,9 +66,9 @@ struct ProfileSetUp: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Top logo (as in your mock)
+                    // Top logo
                     HStack {
-                        Image(.studyBuddyLogo)
+                        Image("studyBuddyLogo")
                             .renderingMode(.original)
                             .frame(width: 42, height: 48)
                             .accessibilityHidden(true)
@@ -118,6 +104,7 @@ struct ProfileSetUp: View {
                                 if let data = try? await newItem?.loadTransferable(type: Data.self),
                                    let uiImage = UIImage(data: data) {
                                     selectedImage = uiImage
+                                    profile.photoData = data
                                 }
                             }
                         }
@@ -234,7 +221,7 @@ struct ProfileSetUp: View {
                             .foregroundStyle(.secondary)
                         
                         HStack(spacing: 24) {
-                            ForEach(StudyTime.allCases) { time in
+                            ForEach(Profile.StudyTime.allCases) { time in
                                 let isSelected = selectedTimes.contains(time)
                                 Button {
                                     toggle(time)
@@ -257,9 +244,21 @@ struct ProfileSetUp: View {
                     }
                     .padding(.horizontal, 24)
                     
+                    // Hidden navigation to ProfilePage
+                    NavigationLink(destination: ProfilePage().environmentObject(profile), isActive: $goToProfile) {
+                        EmptyView()
+                    }
+                    .hidden()
+                    
                     // Next button
                     Button {
-                        // TODO: handle save and navigate forward
+                        // Save into model and navigate
+                        profile.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        profile.major = major.trimmingCharacters(in: .whitespacesAndNewlines)
+                        profile.favoriteArea = favoriteArea
+                        profile.courses = courses
+                        profile.selectedTimes = selectedTimes
+                        goToProfile = true
                     } label: {
                         Text("Next")
                             .font(.system(size: 20, weight: .bold))
@@ -285,7 +284,7 @@ struct ProfileSetUp: View {
     }
     
     // MARK: - Actions
-    private func toggle(_ time: StudyTime) {
+    private func toggle(_ time: Profile.StudyTime) {
         if selectedTimes.contains(time) {
             selectedTimes.remove(time)
         } else {
@@ -300,7 +299,7 @@ struct ProfileSetUp: View {
         if !courses.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             courses.append(trimmed)
         }
-        courseInput = "" // keep the field visible, just clear it
+        courseInput = ""
     }
     
     private func removeCourse(_ course: String) {
