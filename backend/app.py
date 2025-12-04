@@ -1,6 +1,6 @@
 import json, datetime, io
 from flask import Flask, jsonify, request, send_file
-from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, db
+from db import  User, Profile, Course, StudyArea, StudyTime, Major, Message, Meeting, UserMatchStatus, Match, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
@@ -598,6 +598,126 @@ def get_user_meetings(user_id):
     ).order_by(Meeting.time.asc()).all()
     
     return success_response([m.serialize() for m in meetings])
+
+
+@app.route("/swipes/", methods=["POST"])
+def record_swipe():
+    """
+    Records a swipe action (LIKE/DISLIKE) and checks for a mutual match.
+    Request body:
+    {
+        "swiper_id": <INT, required>,
+        "target_id": <INT, required>,
+        "status": <STRING, required, 'LIKE' or 'DISLIKE'>
+    }
+    """
+    body = json.loads(request.data)
+    swiper_id = body.get("swiper_id")
+    target_id = body.get("target_id")
+    status = body.get("status")
+
+    if not swiper_id or not target_id or status not in ['LIKE', 'DISLIKE']:
+        return failure_response("swiper_id, target_id, and status ('LIKE' or 'DISLIKE') are required", 400)
+
+    # 1. Validate Users
+    swiper = User.query.get(swiper_id)
+    target = User.query.get(target_id)
+    if not swiper or not target:
+        return failure_response("One or both users not found", 404)
+    if swiper_id == target_id:
+        return failure_response("Cannot swipe on yourself", 400)
+
+    # 2. Check for existing swipe (prevents duplicate status records)
+    existing_swipe = db.session.get(UserMatchStatus, (swiper_id, target_id))
+    if existing_swipe:
+        return failure_response("Swipe already recorded for this pair", 409)
+
+    # 3. Record the new swipe
+    new_swipe = UserMatchStatus(swiper_id=swiper_id, target_id=target_id, status=status)
+    db.session.add(new_swipe)
+    db.session.commit()
+
+    # 4. Check for a mutual match (only if the new status is 'LIKE')
+    is_match = False
+    if status == 'LIKE':
+        # Check if the target user (B) has a reciprocal 'LIKE' on the swiper (A)
+        reciprocal_swipe = UserMatchStatus.query.filter_by(
+            swiper_id=target_id,  # Target is the swiper
+            target_id=swiper_id,  # Swiper is the target
+            status='LIKE'
+        ).first()
+
+        if reciprocal_swipe:
+            is_match = True
+            
+            # Record the final match in the 'Match' table
+            # We use the min/max ID convention set in the Match model __init__
+            try:
+                match = Match(user1_id=swiper_id, user2_id=target_id)
+                db.session.add(match)
+                db.session.commit()
+            except Exception as e:
+                # Handle case where match already exists due to timing/constraint
+                db.session.rollback()
+                pass # Match was already recorded, just continue
+
+    response_data = {
+        "swipe_recorded": new_swipe.serialize(),
+        "match_found": is_match,
+        "new_match_id": match.id if is_match and 'match' in locals() else None
+    }
+    return success_response(response_data, 201)
+
+@app.route("/users/<int:user_id>/matches/", methods=["GET"])
+def get_user_matches(user_id):
+    """
+    Retrieves all finalized, mutual matches for a specific user.
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return failure_response("User not found", 404)
+
+    # Query for matches where the user is either user1 or user2
+    matches = Match.query.filter(
+        (Match.user1_id == user_id) | (Match.user2_id == user_id)
+    ).order_by(Match.matched_on.desc()).all()
+
+    match_list = []
+    for match in matches:
+        # Determine the ID of the *other* user in the pair
+        other_user_id = match.user2_id if match.user1_id == user_id else match.user1_id
+        other_user = User.query.get(other_user_id)
+
+        if other_user:
+            match_list.append({
+                "match_id": match.id,
+                "matched_user": other_user.serialize(), # Get the other user's full details
+                "matched_on": match.matched_on.strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+    return success_response(match_list)
+
+@app.route("/users/<int:user_id>/suggestions/", methods=["GET"])
+def get_match_suggestions(user_id):
+    """
+    Retrieves profiles the user has NOT yet swiped on (LIKE or DISLIKE).
+    """
+    current_user = User.query.get(user_id)
+    if not current_user:
+        return failure_response("User not found", 404)
+        
+    # 1. Identify all users the current user has already swiped on (or is self)
+    subquery_swiped = db.session.query(UserMatchStatus.target_id).filter(
+        UserMatchStatus.swiper_id == user_id
+    )
+    
+    # 2. Query all Users whose ID is NOT in the subquery result AND is NOT the current user's ID
+    suggestions = User.query.filter(
+        User.id != user_id, 
+        User.id.notin_(subquery_swiped)
+    ).all()
+    
+    return success_response([u.serialize() for u in suggestions])
 
 
 if __name__ == "__main__":

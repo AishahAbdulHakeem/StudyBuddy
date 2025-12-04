@@ -333,3 +333,82 @@ class Meeting(db.Model): # ADDED NEW MODEL
          "time": self.time.isoformat() if self.time else None, # Use ISO format for standard time representation
          "location": self.location,
       }
+   
+
+class UserMatchStatus(db.Model):
+    """
+    Records a unidirectional swipe/action (LIKE or DISLIKE) from one user to another.
+    """
+    __tablename__ = 'user_match_status'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User who initiated the swipe/action
+    swiper_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # User who was swiped on/rated
+    target_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Status: 'LIKE' or 'DISLIKE'
+    status = db.Column(db.String(10), nullable=False) 
+    
+    # Optional: Prevent duplicate swipes
+    __table_args__ = (
+        db.UniqueConstraint('swiper_id', 'target_id', name='_swiper_target_uc'),
+    )
+
+    # Relationships to the User Table
+    swiper = db.relationship("User", foreign_keys=[swiper_id], backref="swipes_made")
+    target = db.relationship("User", foreign_keys=[target_id], backref="swipes_received")
+
+    def __init__(self, swiper_id, target_id, status):
+        self.swiper_id = swiper_id
+        self.target_id = target_id
+        self.status = status
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "swiper_id": self.swiper_id,
+            "target_id": self.target_id,
+            "status": self.status
+        }
+
+class Match(db.Model):
+    """
+    Represents a finalized, mutual match between two users.
+    This simplifies querying for current chat partners.
+    """
+    __tablename__ = 'matches'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User IDs involved in the match
+    user1_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user2_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Timestamp of when the mutual match occurred
+    matched_on = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Constraints: Ensure the pair is unique regardless of order (e.g., (1, 2) is the same as (2, 1))
+    __table_args__ = (
+        db.UniqueConstraint('user1_id', 'user2_id', name='_match_pair_uc'),
+        db.CheckConstraint('user1_id < user2_id', name='_check_user_order') # Enforces canonical order (e.g., user1_id must be the lower ID)
+    )
+
+    # Relationships
+    user1 = db.relationship("User", foreign_keys=[user1_id], backref="matches_as_user1")
+    user2 = db.relationship("User", foreign_keys=[user2_id], backref="matches_as_user2")
+
+    def __init__(self, user1_id, user2_id):
+        # Automatically ensures canonical order for the unique constraint
+        self.user1_id = min(user1_id, user2_id)
+        self.user2_id = max(user1_id, user2_id)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user1_id": self.user1_id,
+            "user2_id": self.user2_id,
+            "matched_on": self.matched_on.strftime("%Y-%m-%d %H:%M:%S")
+        }
