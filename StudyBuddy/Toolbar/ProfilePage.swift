@@ -229,7 +229,7 @@ struct ProfilePage: View {
                     Spacer()
                     ZStack {
                         HStack(spacing: 40) {
-                            NavigationLink(destination: StudyBuddyPage()) {
+                            NavigationLink(destination: HomePage()) {
                                 Image("StudyBuddyLogo")
                                     .resizable()
                                     .scaledToFit()
