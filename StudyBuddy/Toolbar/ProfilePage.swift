@@ -426,7 +426,13 @@ struct ProfilePage: View {
     p.courses = ["CS 3110", "CS 2800", "MATH 2930", "CHIN 1109", "INFO 1998"]
     p.selectedTimes = [.day, .morning]
     p.selectedLocations = [.library, .cafe]
+
+    let messages = MessagesModel()
+    messages.matches = [
+        DummyUser(name: "Alice Chen", major: "CS 2027", avatar: "avatar1")
+    ]
+
     return ProfilePage()
         .environmentObject(p)
+        .environmentObject(messages)
 }
-

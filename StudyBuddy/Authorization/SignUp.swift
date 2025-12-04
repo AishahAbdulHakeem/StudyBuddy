@@ -9,6 +9,9 @@ import SwiftUI
 
 struct SignUp: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var profile: Profile
+
+    @StateObject private var viewModel = SignUpViewModel()
     
     @State private var username: String = ""
     @State private var email: String = ""
@@ -19,11 +22,16 @@ struct SignUp: View {
     private let brandRed = Color(hex: 0x9E122C)
     private let fieldBorder = Color(.systemGray3)
     
+    private var canSubmit: Bool {
+        !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !password.isEmpty
+    }
+    
     var body: some View {
         NavigationStack{
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground).ignoresSafeArea()
-                
                 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -91,6 +99,14 @@ struct SignUp: View {
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
                             
+                            if let error = viewModel.errorMessage, !error.isEmpty {
+                                Text(error)
+                                    .font(.footnote)
+                                    .foregroundStyle(brandRed)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.top, 4)
+                            }
+                            
                             // Have an account? Login
                             HStack {
                                 Text("Have an account?")
@@ -107,7 +123,7 @@ struct SignUp: View {
                             
                             // Hidden NavigationLink triggered by state
                             NavigationLink(
-                                destination: ProfileSetUp(),
+                                destination: ProfileSetUp().environmentObject(profile),
                                 isActive: $goToEditProfile
                             ) {
                                 EmptyView()
@@ -116,22 +132,30 @@ struct SignUp: View {
                             
                             // Sign up button
                             Button {
-                                // Perform validation / sign-up logic here.
-                                // On success:
-                                goToEditProfile = true
+                                Task {
+                                    await handleSignUp()
+                                }
                             } label: {
-                                Text("Sign up")
-                                    .font(.system(size: 22, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .foregroundColor(.white)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(brandRed)
-                                    )
-                                    .shadow(color: brandRed.opacity(0.25), radius: 6, y: 3)
+                                HStack {
+                                    if viewModel.isLoading {
+                                        ProgressView()
+                                            .tint(.white)
+                                    }
+                                    Text(viewModel.isLoading ? "Creating account..." : "Sign up")
+                                        .font(.system(size: 22, weight: .bold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundColor(.white)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(brandRed)
+                                )
+                                .shadow(color: brandRed.opacity(0.25), radius: 6, y: 3)
                             }
                             .padding(.top, 12)
+                            .disabled(!canSubmit || viewModel.isLoading)
+                            .opacity((!canSubmit || viewModel.isLoading) ? 0.7 : 1.0)
                         }
                         .padding(20)
                         .background(
@@ -146,13 +170,21 @@ struct SignUp: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            
         }
+    }
+    
+    private func handleSignUp() async {
+        let user = await viewModel.signUp(username: username, email: email, password: password)
+        guard user != nil else { return }
+        // Populate Profile with username/email for the next screen
+        profile.name = username
+        profile.email = email
+        // Proceed to profile setup
+        goToEditProfile = true
     }
 }
 
 #Preview {
-   
-        SignUp()
-
+    SignUp()
+        .environmentObject(Profile())
 }

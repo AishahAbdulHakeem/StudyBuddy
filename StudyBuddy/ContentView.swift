@@ -60,5 +60,21 @@ struct ContentView: View {
 
 
 #Preview {
-    ContentView()
+    // Provide all EnvironmentObjects that any descendant may need
+    let profile = Profile()
+    let messages = MessagesModel()
+
+    // Seed some optional preview data if you like
+    profile.name = "Preview User"
+    profile.majors = ["Computer Science 28’"]
+    profile.selectedTimes = [.day, .morning]
+    profile.selectedLocations = [.library]
+
+    messages.matches = [
+        DummyUser(name: "Alice Chen", major: "CS 2027", avatar: "avatar1")
+    ]
+
+    return ContentView()
+        .environmentObject(profile)
+        .environmentObject(messages)
 }

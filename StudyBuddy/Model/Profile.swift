@@ -147,6 +147,9 @@ final class Profile: ObservableObject {
     
     // Photo
     @Published var photoData: Data? = nil
+
+    // Account info
+    @Published var email: String = ""
     
     // Convenience
     var hasPhoto: Bool { photoData != nil }
@@ -180,10 +183,7 @@ final class Profile: ObservableObject {
     }
     
     func updateEvent(_ updated: StudySessionEvent) {
-        // If date moved, remove from old key and insert into new key
-        // First remove from any day it exists
         removeEvent(withID: updated.id)
-        // Then add to its (possibly new) day
         addEvent(updated)
     }
     
@@ -198,4 +198,3 @@ final class Profile: ObservableObject {
         events[dateOnly(date)] ?? []
     }
 }
-
