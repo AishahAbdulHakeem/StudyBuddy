@@ -50,7 +50,7 @@ struct PreExplore: View {
                 }
                 .onAppear {
                     // Simulate a network request or data fetching
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         isLoading = false // Set to false when loading is complete
                     }
                 }

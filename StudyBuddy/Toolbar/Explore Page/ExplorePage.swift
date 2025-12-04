@@ -37,7 +37,7 @@ struct ExplorePage: View {
                     )
                     .environmentObject(profile)
                     .padding(.horizontal, 16)
-                    .padding(.top, 12)
+//                    .padding(.top, 12)
                 }
                 .padding(.bottom, 140) // leave space for big buttons and bottom bar
 
@@ -59,7 +59,7 @@ struct ExplorePage: View {
                         ZStack {
                             Circle()
                                 .fill(brandRed)
-                                .frame(width: 84, height: 84)
+                                .frame(width: 68, height: 68)
                                 .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 6)
                             Image(systemName: "xmark")
                                 .font(.system(size: 32, weight: .bold))
@@ -75,7 +75,7 @@ struct ExplorePage: View {
                         ZStack {
                             Circle()
                                 .stroke(brandRed, lineWidth: 4)
-                                .frame(width: 84, height: 84)
+                                .frame(width: 68, height: 68)
                                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 4)
                             Image(systemName: "checkmark")
                                 .font(.system(size: 32, weight: .bold))
@@ -84,7 +84,7 @@ struct ExplorePage: View {
                     }
                 }
                 .padding(.horizontal, 28)
-                .padding(.bottom, 120) // sits above your bottom nav bar
+                .padding(.bottom, 60) // sits above your bottom nav bar
 
                 // Hidden programmatic navigation to Messages
                 NavigationLink(destination: MessagesPage()
@@ -159,7 +159,7 @@ struct ExplorePage: View {
         showMatchPopup = true
 
         // Small delay for feedback, then go to Messages
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             goToMessages = true
             loadNext()
         }

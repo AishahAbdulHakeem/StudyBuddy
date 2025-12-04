@@ -141,8 +141,6 @@ struct ResetPw: View {
                                 .stroke(fieldBorder, lineWidth: 1)
                         )
                     }
-                    .padding(.horizontal, 24)
-                    
                     // Requirements
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Password must contain:")
@@ -162,7 +160,6 @@ struct ResetPw: View {
                         .animation(.easeInOut(duration: 0.2), value: hasNumber)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
                     
                     // Reset Button
                     Button {
@@ -181,7 +178,6 @@ struct ResetPw: View {
                             .shadow(color: brandRed.opacity(0.2), radius: 6, y: 3)
                             .opacity(canSubmit ? 1.0 : 0.5)
                     }
-                    .padding(.horizontal, 24)
                     .disabled(!canSubmit)
                     
                     // Error message (below the button)
@@ -194,8 +190,10 @@ struct ResetPw: View {
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     
-                    Spacer(minLength: 24)
                 }
+                .padding(20)
+                .padding(.horizontal, 24)
+                Spacer(minLength: 20)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .navigationTitle("Reset Password")

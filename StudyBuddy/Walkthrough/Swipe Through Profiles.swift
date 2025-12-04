@@ -28,6 +28,7 @@ struct SwipeThroughProfiles: View {
                         .font(.system(size: 24))
                     Text("Discover new people taking the same courses to study with!")
                         .font(.system(size: 16))
+                        .multilineTextAlignment(.center)
                         .padding (.vertical, 20)
                         .padding(.horizontal, 56)
                         .foregroundStyle(Color(hex: 0x9E122C))

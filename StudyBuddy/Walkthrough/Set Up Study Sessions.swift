@@ -28,6 +28,7 @@ struct SetUpStudySessions: View {
                         .font(.system(size: 24))
                     Text("Create lock-in sessions with those you match with to ace your next exam!")
                         .font(.system(size: 16))
+                        .multilineTextAlignment(.center)
                         .padding(.vertical, 20)
                         .padding(.horizontal, 56)
                         .foregroundStyle(Color(hex: 0x9E122C))

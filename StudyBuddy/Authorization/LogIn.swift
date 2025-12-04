@@ -23,23 +23,18 @@ struct LogIn: View {
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground).ignoresSafeArea()
                 
-                
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Logo
                         Image("StudyBuddySignUpLogo")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 180, height: 120)
                             .padding(.top, 40)
-                        
-                        // Subtitle
                         Text("Welcome Back!")
                             .font(.headline)
                             .foregroundStyle(.primary)
                         
                         VStack(spacing: 14) {
-                            // Username
                             TextField("Username", text: $username)
                                 .textContentType(.username)
                                 .autocapitalization(.none)
@@ -74,16 +69,14 @@ struct LogIn: View {
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
                             
-                            
                             HStack {
                                 Text("Forgot Password?")
                                     .foregroundStyle(brandRed)
                                 Spacer()
                                 NavigationLink(destination: ResetPw()){
-                                    Text("Reset")
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(brandRed)
-                                    
+//                                    Text("Reset")
+//                                        .fontWeight(.semibold)
+//                                        .foregroundStyle(brandRed)
                                 }
                                 .font(.subheadline)
                                 .padding(.top, 8)
@@ -94,13 +87,12 @@ struct LogIn: View {
                                     .foregroundStyle(brandRed)
                                 Spacer()
                                 NavigationLink(destination: SignUp()) {
-                                    Text("Signup")
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(brandRed)
+//                                    Text("Signup")
+//                                        .fontWeight(.semibold)
+//                                        .foregroundStyle(brandRed)
                                 }
                                 .font(.subheadline)
                                 .padding(.top, 8)
-                                
                                 
                             }
                             NavigationLink(
@@ -124,19 +116,12 @@ struct LogIn: View {
                                         RoundedRectangle(cornerRadius: 14)
                                             .fill(brandRed)
                                     )
-                                    .shadow(color: brandRed.opacity(0.25), radius: 6, y: 3)
                             }
                         }
                         .padding(.top, 12)
                     }
                     .padding(20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(fieldBorder, lineWidth: 1)
-                            .fill(Color.clear)
-                    )
                     .padding(.horizontal, 24)
-                    
                     Spacer(minLength: 20)
                 }
                 .frame(maxWidth: .infinity)
@@ -146,10 +131,6 @@ struct LogIn: View {
     }
 }
 
-
-                            
-
 #Preview {
     LogIn()
 }
-

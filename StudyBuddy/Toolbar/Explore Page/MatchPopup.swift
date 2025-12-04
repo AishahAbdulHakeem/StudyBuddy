@@ -32,7 +32,7 @@ struct MatchPopup: View {
                         .font(.title.bold())
                         .foregroundColor(.white)
 
-                    Button("Start Chat") {
+                    Button("Go to Messages") {
                         visible = false
                         // Navigate to messages
                     }

@@ -28,6 +28,7 @@ struct FindYourMatch: View {
                         .font(.system(size: 24))
                     Text("Connect with other students taking the same course, with similar study times as you!")
                         .font(.system(size: 16))
+                        .multilineTextAlignment(.center)
                         .padding (.vertical, 20)
                         .padding(.horizontal, 56)
                         .foregroundStyle(Color(hex: 0x9E122C))
