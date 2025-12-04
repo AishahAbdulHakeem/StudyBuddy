@@ -17,7 +17,7 @@ def success_response(data, code=200):
 def failure_response(data, code=404):
     return json.dumps({"error": data}), code
 
-MAX_PROFILE_IMAGE_BYTES = 2 * 1024 * 1024  # 2MB cap for avatar blobs
+MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB cap for avatar blobs
 
 @app.route("/signup/", methods=["POST"])
 def signup():
@@ -545,7 +545,8 @@ def create_meeting():
         "user1_id": <INT, required>,
         "user2_id": <INT, required>,
         "time": <STRING, required, format: "YYYY-MM-DD HH:MM:SS">,
-        "location": <STRING, optional>
+        "location": <STRING, optional>,
+        "description": <STRING, optional>
     }
     """
     body = json.loads(request.data)
@@ -553,6 +554,7 @@ def create_meeting():
     user2_id = body.get("user2_id")
     time_str = body.get("time")
     location = body.get("location")
+    description = body.get("description")
 
     if not user1_id or not user2_id or not time_str:
         return failure_response("user1_id, user2_id, and time are required", 400)
@@ -574,7 +576,8 @@ def create_meeting():
         user1_id=user1_id,
         user2_id=user2_id,
         time=meeting_time,
-        location=location
+        location=location,
+        description=description,
     )
     
     db.session.add(meeting)
