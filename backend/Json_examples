@@ -1,0 +1,97 @@
+/*
+ * Purpose: Creates a new user account with the provided credentials.
+ * Endpoint: POST /signup/
+ */
+{
+    "username": "new_study_user",
+    "email": "user@school.edu",
+    "password": "secure_password123"
+}
+
+/*
+ * Purpose: Authenticates a user to log them into the application.
+ * Endpoint: /login/ (Note: Route is GET but expects request.data, implying POST/login functionality)
+ */
+{
+    "username": "studybuddy101",
+    "password": "secure_password123"
+}
+
+/*
+ * Purpose: Adds a new course to the database.
+ * Endpoint: POST /courses/
+ */
+{
+    "code": "PHYS 1110" 
+}
+
+/*
+ * Purpose: Adds a new major (field of study) to the database.
+ * Endpoint: POST /majors/
+ */
+{
+    "name": "Electrical Engineering"
+}
+
+/*
+ * Purpose: Adds a new study area option (e.g., location name) to the database.
+ * Endpoint: POST /areas/
+ */
+{
+    "name": "Cozy Coffee Shop"
+}
+
+/*
+ * Purpose: Adds a new study time option (e.g., time slot name) to the database.
+ * Endpoint: POST /times/
+ */
+{
+    "name": "Morning (8 AM - 12 PM)"
+}
+
+/*
+ * Purpose: Creates a new user profile, linking the user to their study preferences.
+ * Note: All fields are required upon creation.
+ * Endpoint: POST /profiles/
+ */
+{
+    "user_id": 1,
+    "study_area_id": 301,
+    "course_ids": [201, 202, 203],
+    "study_time_ids": [401],
+    "major_ids": [101]
+}
+
+/*
+ * Purpose: Updates an existing user's study profile.
+ * Note: Only include the fields you wish to change. The profile ID is in the URL (e.g., /profiles/1/).
+ * Endpoint: PUT /profiles/<int:id>/
+ */
+{
+    "study_area_id": 302,
+    "course_ids": [201, 204],
+    "study_time_ids": [401, 402]
+    // "major_ids" could also be included to update majors
+}
+
+/*
+ * Purpose: Sends a direct message from one user to another.
+ * Endpoint: POST /messages/
+ */
+{
+    "sender_id": 1,
+    "receiver_id": 2,
+    "content": "Do you want to form a study group for Calc III?"
+}
+
+/*
+ * Purpose: Schedules a meeting between two users.
+ * Note: The "time" field requires the format YYYY-MM-DD HH:MM:SS.
+ * Endpoint: POST /meetings/
+ */
+{
+    "user1_id": 1,
+    "user2_id": 3,
+    "time": "2025-12-10 17:00:00",
+    "location": "Online via Zoom"
+}
