@@ -1,24 +1,15 @@
-//
-//  Messages.swift
-//  StudyBuddy
-//
-//  Created by black dune house loaner on 12/1/25.
-//
-
 import SwiftUI
 
 struct MessagesPage: View {
     @EnvironmentObject var messages: MessagesModel
+    @EnvironmentObject var session: SessionStore
 
     private let brandRed = Color(hex: 0x9E122C)
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Main content
                 VStack(alignment: .leading, spacing: 16) {
-
-                    // Logo
                     HStack {
                         Image("StudyBuddyLogoRed")
                             .resizable()
@@ -29,7 +20,6 @@ struct MessagesPage: View {
                     .padding(.top, 8)
                     .padding(.horizontal, 20)
 
-                    // Horizontal strip of matches (avatars)
                     if !messages.matches.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 16) {
@@ -53,7 +43,6 @@ struct MessagesPage: View {
                             .padding(.horizontal, 20)
                     }
 
-                    // Vertical list (placeholder conversations = matches)
                     List {
                         ForEach(messages.matches) { user in
                             HStack(spacing: 16) {
@@ -73,11 +62,10 @@ struct MessagesPage: View {
                     }
                     .listStyle(.plain)
 
-                    Spacer(minLength: 120) // leave space so content isn't under the bar
+                    Spacer(minLength: 120)
                 }
                 .padding(.top, 8)
 
-                // Bottom bar (matches HomePage/ProfilePage/CalendarPage)
                 VStack {
                     Spacer()
                     ZStack {
@@ -103,7 +91,6 @@ struct MessagesPage: View {
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
                             }
-                            // Current page highlighted (filled icon)
                             Image(systemName: "message.fill")
                                 .resizable()
                                 .scaledToFit()
@@ -130,11 +117,15 @@ struct MessagesPage: View {
             .navigationTitle("Messages")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .task {
+            let loaded = await session.fetchMatches()
+            messages.matches = loaded
+        }
     }
 
-    private func avatar(for user: DummyUser) -> some View {
+    private func avatar(for user: MatchUser) -> some View {
         Group {
-            if let ui = UIImage(named: user.avatar) {
+            if let ui = UIImage(named: user.avatarImageName) {
                 Image(uiImage: ui)
                     .resizable()
                     .scaledToFill()
@@ -144,14 +135,4 @@ struct MessagesPage: View {
             }
         }
     }
-}
-
-#Preview {
-    let model = MessagesModel()
-    model.matches = [
-        DummyUser(name: "Alice Chen", major: "CS 2027", avatar: "avatar1"),
-        DummyUser(name: "Brian Lee", major: "ECE 2026", avatar: "avatar2"),
-        DummyUser(name: "Carla Kim", major: "Info Sci 2025", avatar: "avatar3")
-    ]
-    return MessagesPage().environmentObject(model)
 }

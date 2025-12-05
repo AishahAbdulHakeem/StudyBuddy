@@ -13,11 +13,9 @@ struct ContentView: View {
     var body: some View {
         Group {
             if session.isAuthenticated {
-                // Go to your real app shell; you currently use PreExplore -> HomePage
-                PreExplore()
+                SetUpStudySessions()
             } else {
-                // Start with auth flow
-                SetUpStudySessions() // or SignUp/LogIn directly if you prefer
+                SetUpStudySessions()
             }
         }
     }

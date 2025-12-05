@@ -382,4 +382,38 @@ final class SessionStore: ObservableObject {
         if selected.contains(.night)   { ids.append(3) }
         return ids
     }
+    
+    // MARK: - Fetch matches for MessagesPage (real implementation)
+    func fetchMatches() async -> [MatchUser] {
+        guard let uid = userId else { return [] }
+        
+        // 1) Fetch match refs
+        let matchRefs: [APIManager.UserMatchDTO]? = await withCheckedContinuation { continuation in
+            APIManager.shared.getUserMatches(userId: uid) { result in
+                switch result {
+                case .success(let items): continuation.resume(returning: items)
+                case .failure: continuation.resume(returning: nil)
+                }
+            }
+        }
+        guard let matchRefs, !matchRefs.isEmpty else { return [] }
+        
+        // 2) For each matched user, fetch their profile dto
+        var users: [MatchUser] = []
+        for item in matchRefs {
+            guard let pId = item.matched_user?.profile?.id else { continue }
+            let dto: APIManager.RichProfileDTO? = await withCheckedContinuation { continuation in
+                APIManager.shared.getProfile(id: pId) { result in
+                    switch result {
+                    case .success(let prof): continuation.resume(returning: prof)
+                    case .failure: continuation.resume(returning: nil)
+                    }
+                }
+            }
+            if let dto {
+                users.append(MatchUser(dto: dto))
+            }
+        }
+        return users
+    }
 }

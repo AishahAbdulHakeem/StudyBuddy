@@ -83,7 +83,7 @@ struct ProfileSetUp: View {
         GridItem(.flexible(minimum: 60), spacing: 12)
     ]
     
-    // Study areas mapping (Cafe=1, Study Hall=2, Library=3)
+    // Study areas 
     private var studyAreaId: Int? {
         switch favoriteArea {
         case "Library":    return 3
@@ -97,7 +97,7 @@ struct ProfileSetUp: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Top logo
+                   
                     HStack {
                         Image(.studyBuddyLogo)
                             .renderingMode(.original)
@@ -108,7 +108,7 @@ struct ProfileSetUp: View {
                     .padding(.top, 16)
                     .padding(.horizontal, 20)
                     
-                    // Avatar picker
+                 
                     VStack {
                         PhotosPicker(selection: $selectedItem, matching: .images) {
                             ZStack {
@@ -186,7 +186,7 @@ struct ProfileSetUp: View {
                             )
                         }
                         
-                        // Courses container (input + chips)
+                        // Courses container
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 10) {
                                 TextField("Courses", text: $courseInput, onCommit: addCourse)
@@ -276,8 +276,7 @@ struct ProfileSetUp: View {
                             .foregroundStyle(brandRed)
                             .padding(.horizontal, 24)
                     }
-                    
-                    // Hidden NavigationLink to PreExplore
+                 
                     NavigationLink(destination: PreExplore(), isActive: $goToPreExplore) {
                         EmptyView()
                     }
@@ -324,20 +323,20 @@ struct ProfileSetUp: View {
             return
         }
         
-        // Resolve major (create if needed)
+        
         guard let majorID = await session.resolveMajorID(from: major) else {
             submitError = "Please enter a valid major."
             return
         }
         
-        // Resolve courses (create if needed)
+      
         let courseIDs = await session.resolveCourseIDs(from: courses)
         if courseIDs.isEmpty {
             submitError = "Please add at least one valid course (e.g., CS3110)."
             return
         }
         
-        // Resolve study times (predefined ids)
+       
         let timeIDs = session.resolveStudyTimeIDs(from: selectedTimes)
         if timeIDs.isEmpty {
             submitError = "Please select at least one study time."
@@ -353,7 +352,7 @@ struct ProfileSetUp: View {
         )
         let ok = await session.createOrUpdateProfile(setup: payload)
         if ok {
-            // New: refresh the in-memory profile from backend so ProfilePage shows real data
+           
             await session.fetchAndPopulateProfileForCurrentUser()
             goToPreExplore = true
         } else {

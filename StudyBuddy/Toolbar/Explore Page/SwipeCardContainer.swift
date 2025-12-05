@@ -2,9 +2,8 @@
 //  SwipeCardContainer.swift
 //  StudyBuddy
 //
-//  Created by black dune house loaner on 12/3/25.
+//  Created by black dune house loaner on 12/1/25.
 //
-
 import SwiftUI
 
 struct SwipeCardContainer<Content: View>: View {
@@ -34,14 +33,12 @@ struct SwipeCardContainer<Content: View>: View {
                 )
                 .animation(.spring(response: 0.35, dampingFraction: 0.7), value: offset)
 
-            // MATCH overlay on right drag
             if offset.width > 80 {
                 matchStamp("MATCH", color: .green)
                     .offset(x: -80, y: -200)
                     .opacity(Double((offset.width - 80) / 120))
             }
 
-            // REJECT overlay on left drag
             if offset.width < -80 {
                 matchStamp("NO THANKS", color: .red)
                     .offset(x: 80, y: -200)
@@ -50,7 +47,6 @@ struct SwipeCardContainer<Content: View>: View {
         }
     }
 
-    // MARK: - Animations
     private var scaleAmount: CGFloat {
         let distance = abs(offset.width)
         return max(0.9, 1 - distance / 1500)
@@ -66,9 +62,8 @@ struct SwipeCardContainer<Content: View>: View {
         return distance / 15
     }
 
-    // MARK: - Swipe Logic
     private func handleSwipe() {
-        if offset.width > 120 { // Right swipe
+        if offset.width > 120 {
             withAnimation(.spring()) {
                 offset = CGSize(width: 600, height: 0)
             }
@@ -77,7 +72,7 @@ struct SwipeCardContainer<Content: View>: View {
                 isMatched = true
                 offset = .zero
             }
-        } else if offset.width < -120 { // Left swipe
+        } else if offset.width < -120 {
             withAnimation(.spring()) {
                 offset = CGSize(width: -600, height: 0)
             }
@@ -90,7 +85,6 @@ struct SwipeCardContainer<Content: View>: View {
         }
     }
 
-    // MARK: - Stamp Overlay
     private func matchStamp(_ text: String, color: Color) -> some View {
         Text(text)
             .font(.largeTitle.bold())
@@ -102,5 +96,18 @@ struct SwipeCardContainer<Content: View>: View {
             )
             .foregroundColor(color)
             .rotationEffect(.degrees(-20))
+    }
+}
+
+#Preview {
+    SwipeCardContainer(
+        offset: .constant(.zero),
+        isMatched: .constant(false),
+        onSwipeLeft: {},
+        onSwipeRight: {}
+    ) {
+        Rectangle()
+            .fill(Color.blue)
+            .frame(width: 300, height: 400)
     }
 }

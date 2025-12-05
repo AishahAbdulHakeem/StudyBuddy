@@ -2,25 +2,48 @@
 //  ProfileCardView.swift
 //  StudyBuddy
 //
-//  Created by black dune house loaner on 12/3/25.
+//  Created by black dune house loaner on 12/1/25.
 //
-
 import SwiftUI
 
 struct ProfileCardView: View {
-    let user: DummyUser
+    let user: MatchUser
     @EnvironmentObject var profile: Profile
 
-    // Brand colors
     private let brandRed = Color(hex: 0x9E122C)
     private let fieldBorder = Color(.systemGray3)
     private let placeholderCircle = Color(.systemGray4)
 
+    private var handleText: String {
+        "@studybuddy_\(user.id)"
+    }
+
+    private var majorsText: String {
+        user.primaryMajor
+    }
+
+    private var timeChips: [Profile.StudyTime] {
+        if user.preferredTimes.isEmpty {
+            return [.day, .morning]
+        }
+        return user.preferredTimes
+    }
+
+    private let timeMapping: [Profile.StudyTime: String] = [
+        .morning: "9am - 12pm",
+        .day: "4pm - 7pm",
+        .night: "7pm - 12am"
+    ]
+
+    private var selectedLocationTiles: [FlexibleTilesRow.Tile] {
+        let ordered: [Profile.Location] = [.library, .cafe, .studyHall]
+        let chosen = ordered.filter { user.preferredLocations.contains($0) }
+        return chosen.map { .init(title: $0.title, systemImage: $0.systemImage) }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-
-                // MARK: – Logo Row
                 HStack {
                     Image("StuddyBuddyLogoRed")
                         .resizable()
@@ -30,12 +53,10 @@ struct ProfileCardView: View {
                 }
                 .padding(.top, 4)
 
-                // MARK: – Header Info
                 HStack(alignment: .top, spacing: 16) {
                     avatar
-
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("@testing_123")
+                        Text(handleText)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
@@ -44,23 +65,51 @@ struct ProfileCardView: View {
                             .foregroundStyle(.primary)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            infoRow("Major:", user.major)
-                            infoRow("Minors:", "Info Sci, Game Design")
-                            infoRow("College:", "Engineering")
+                            infoRow("Major:", majorsText)
+                            infoRow("Minors:", "Not specified")
+                            infoRow("College:", "Not specified")
                         }
                     }
-
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
 
-                // MARK: – Preferred Times Card
                 preferredTimesCard
 
-                // MARK: – Courses Section
-                coursesSection
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Courses")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-                // MARK: – Favorite Study Locations
-                favoriteLocationsSection
+                    VStack(alignment: .leading) {
+                        FlexibleChipsView(chips: user.courses)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 12)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(fieldBorder, lineWidth: 1)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Favorite study locations!")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    if selectedLocationTiles.isEmpty {
+                        Text("No locations shared yet.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        FlexibleTilesRow(
+                            items: selectedLocationTiles,
+                            brandRed: brandRed
+                        )
+                        .accessibilityElement(children: .contain)
+                    }
+                }
+
+                Spacer(minLength: 20)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
@@ -71,10 +120,9 @@ struct ProfileCardView: View {
         .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
     }
 
-    // MARK: – Avatar
     private var avatar: some View {
         ZStack {
-            if let img = UIImage(named: user.avatar) {
+            if let img = UIImage(named: user.avatarImageName) {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -88,27 +136,33 @@ struct ProfileCardView: View {
         }
     }
 
-    // MARK: – Info Row (Major/Minor/College)
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(label)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
-
             Text(value)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: – Preferred Times Card
     private var preferredTimesCard: some View {
-        HStack(alignment: .top, spacing: 16) {
-
-            // Left: time icons (day + morning)
-            HStack(spacing: 22) {
-                timeIcon("sunrise.fill")
-                timeIcon("sun.max.fill")
+        HStack(alignment: .top) {
+            HStack(spacing: 24) {
+                ForEach(timeChips, id: \.self) { time in
+                    let isSelected = user.preferredTimes.contains(time)
+                    ZStack {
+                        Circle()
+                            .fill(isSelected ? brandRed.opacity(0.15) : Color(.systemGray4))
+                            .frame(width: 52, height: 52)
+                        Image(systemName: time.systemImage)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(isSelected ? brandRed : .secondary)
+                    }
+                    .accessibilityLabel(time.label)
+                    .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                }
             }
 
             Spacer(minLength: 12)
@@ -118,10 +172,13 @@ struct ProfileCardView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Text("9am - 11am")
-                    .font(.subheadline.weight(.semibold))
-                Text("4pm - 7pm")
-                    .font(.subheadline.weight(.semibold))
+                ForEach([Profile.StudyTime.morning, .day, .night], id: \.self) { t in
+                    if user.preferredTimes.contains(t), let label = timeMapping[t] {
+                        Text(label)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+                }
             }
         }
         .padding(14)
@@ -131,31 +188,27 @@ struct ProfileCardView: View {
         )
     }
 
-    private func timeIcon(_ system: String) -> some View {
-        ZStack {
-            Circle()
-                .fill(Color(.systemGray4))
-                .frame(width: 52, height: 52)
-            Image(systemName: system)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(brandRed)
+    struct FlexibleChipsView: View {
+        let chips: [String]
+        private let brandRed = Color(hex: 0x9E122C)
+
+        private let rows: [GridItem] = [
+            GridItem(.fixed(34), spacing: 12, alignment: .center),
+            GridItem(.fixed(34), spacing: 12, alignment: .center)
+        ]
+
+        init(chips: [String]) {
+            self.chips = chips
         }
-    }
 
-    // MARK: – Courses Section
-    private var coursesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-
-            Text("Courses")
-                .font(.headline)
-                .foregroundStyle(.primary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(["CS 3110", "MATH 2930", "INFO 1998", "CS 2800", "CHIN 1109", "BIO 1010"], id: \.self) { course in
+        var body: some View {
+            ScrollView(.horizontal, showsIndicators: true) {
+                LazyHGrid(rows: rows, alignment: .center, spacing: 12) {
+                    ForEach(chips, id: \.self) { course in
                         Text(course.uppercased())
                             .font(.subheadline.weight(.bold))
                             .foregroundColor(.white)
+                            .lineLimit(1)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(
@@ -164,53 +217,69 @@ struct ProfileCardView: View {
                             )
                     }
                 }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
+                .padding(.vertical, 2)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(fieldBorder, lineWidth: 1)
-            )
+            .frame(height: 2 * 34 + 12)
         }
     }
 
-
-    // MARK: – Favorite Locations Row
-    private var favoriteLocationsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Favorite study locations!")
-                .font(.headline)
-
-            HStack(spacing: 40) {
-                locationTile("Library", systemImage: "books.vertical")
-                locationTile("Cafe", systemImage: "cup.and.saucer")
-                locationTile("Study Hall", systemImage: "building.columns")
-            }
+    struct FlexibleTilesRow: View {
+        struct Tile: Identifiable, Hashable {
+            let id = UUID()
+            let title: String
+            let systemImage: String
         }
-    }
 
-    private func locationTile(_ title: String, systemImage: String) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color(.label).opacity(0.6), lineWidth: 1.5)
-                    .frame(width: 64, height: 64)
+        static let columns: [GridItem] = [
+            GridItem(.flexible(minimum: 80), spacing: 20),
+            GridItem(.flexible(minimum: 80), spacing: 20),
+            GridItem(.flexible(minimum: 80), spacing: 20)
+        ]
 
-                Image(systemName: systemImage)
-                    .font(.system(size: 24))
-                    .foregroundStyle(brandRed)
+        let items: [Tile]
+        let brandRed: Color
+
+        var body: some View {
+            LazyVGrid(columns: Self.columns, alignment: .center, spacing: 18) {
+                ForEach(items) { item in
+                    VStack(spacing: 8) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color(.label).opacity(0.6), lineWidth: 1.5)
+                                .frame(width: 64, height: 64)
+                            Image(systemName: item.systemImage)
+                                .font(.system(size: 24, weight: .regular))
+                                .foregroundStyle(brandRed)
+                        }
+                        Text(item.title)
+                            .font(.footnote)
+                            .foregroundStyle(.primary)
+                    }
+                }
             }
-
-            Text(title)
-                .font(.footnote)
-                .foregroundStyle(.primary)
         }
     }
 }
 
 #Preview {
-    ProfileCardView(
-        user: DummyUser(name: "Testing", major: "Computer Science 28’", avatar: "avatar1")
+    let p = Profile()
+    let user = MatchUser(
+        dto: APIManager.RichProfileDTO(
+            id: 1,
+            user_id: 2,
+            courses: [APIManager.RichProfileDTO.Course(id: 1, code: "CS2800")],
+            majors: [APIManager.RichProfileDTO.Major(id: 2, name: "Computer Science")],
+            study_area: APIManager.RichProfileDTO.StudyArea(id: 1, name: "Cafe"),
+            study_times: [
+                APIManager.RichProfileDTO.StudyTime(id: 1, name: "morning"),
+                APIManager.RichProfileDTO.StudyTime(id: 2, name: "day")
+            ],
+            has_profile_image_blob: false,
+            profile_image_blob_base64: nil,
+            profile_image_blob_url: nil,
+            profile_image_mime: nil
+        )
     )
-    .environmentObject(Profile())
+    return ProfileCardView(user: user)
+        .environmentObject(p)
 }

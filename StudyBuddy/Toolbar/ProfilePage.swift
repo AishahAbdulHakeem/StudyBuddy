@@ -10,19 +10,19 @@ import SwiftUI
 struct ProfilePage: View {
     @EnvironmentObject var profile: Profile
 
-    // Branding
+ 
     private let brandRed = Color(hex: 0x9E122C)
     private let brandYellow = Color(hex: 0xFBCB77)
     private let fieldBorder = Color(.systemGray3)
     private let placeholderCircle = Color(.systemGray4)
 
-    // Name (no more “Testing”)
+    
     private var displayName: String {
         let trimmed = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Anonymous" : trimmed
     }
 
-    // Majors / minors / college (no fake defaults)
+    
     private var majorsText: String {
         profile.majors
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -47,20 +47,19 @@ struct ProfilePage: View {
             .filter { !$0.isEmpty }
     }
 
-    // Time chips: only what the user actually selected, ordered nicely
+ 
     private var timeChips: [Profile.StudyTime] {
         let ordered: [Profile.StudyTime] = [.morning, .day, .night]
         return ordered.filter { profile.selectedTimes.contains($0) }
     }
 
-    // Preferred time labels
     private let timeMapping: [Profile.StudyTime: String] = [
         .morning: "9am - 12pm",
         .day: "4pm - 7pm",
         .night: "7pm - 12am"
     ]
 
-    // Show only selected locations
+  
     private var selectedLocationTiles: [FlexibleTilesRow.Tile] {
         let ordered: [Profile.Location] = [.library, .cafe, .studyHall]
         let chosen = ordered.filter { profile.selectedLocations.contains($0) }
@@ -70,11 +69,11 @@ struct ProfilePage: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Main scrollable content
+             
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
 
-                        // Top icon row
+                        
                         HStack {
                             Image("StuddyBuddyLogoRed")
                                 .font(.system(size: 28, weight: .regular))
@@ -84,13 +83,13 @@ struct ProfilePage: View {
                         .padding(.top, 8)
                         .padding(.horizontal, 20)
 
-                        // Header: avatar + name block
+                        
                         HStack(alignment: .top, spacing: 16) {
                             avatar
 
                             VStack(alignment: .leading, spacing: 6) {
 
-                                // Display name (backend / signup-driven)
+                                
                                 Text(displayName)
                                     .font(.title2.weight(.semibold))
                                     .foregroundStyle(.primary)
@@ -134,13 +133,13 @@ struct ProfilePage: View {
                         }
                         .padding(.horizontal, 20)
 
-                        // Preferred times card (only if user picked any)
+                        
                         if !timeChips.isEmpty {
                             preferredTimesCard
                                 .padding(.horizontal, 20)
                         }
 
-                        // Courses section (only if user actually has courses)
+                
                         if !courseList.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Courses")
@@ -160,7 +159,7 @@ struct ProfilePage: View {
                             .padding(.horizontal, 20)
                         }
 
-                        // Favorite locations section (only tiles if they exist)
+                        
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Favorite study locations!")
                                 .font(.headline)
@@ -187,7 +186,7 @@ struct ProfilePage: View {
                     .padding(.bottom, 24)
                 }
 
-                // Edit button (floating)
+                
                 VStack {
                     Spacer()
                     HStack {
@@ -238,7 +237,7 @@ struct ProfilePage: View {
                     }
                 )
 
-                // Navigation Bar
+          
                 VStack {
                     Spacer()
                     ZStack {
@@ -314,7 +313,7 @@ struct ProfilePage: View {
 
     private var preferredTimesCard: some View {
         HStack(alignment: .top) {
-            // Left: icons in circles
+            
             HStack(spacing: 24) {
                 ForEach(timeChips, id: \.self) { time in
                     let isSelected = profile.selectedTimes.contains(time)
@@ -432,7 +431,6 @@ struct ProfilePage: View {
 
 #Preview {
     let p = Profile()
-    // preview can optionally set values, but no fake defaults in real app
     p.name = ""
     return ProfilePage()
         .environmentObject(p)
