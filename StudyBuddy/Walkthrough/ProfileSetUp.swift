@@ -10,6 +10,8 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileSetUp: View {
+    @EnvironmentObject var session: SessionStore
+
     // MARK: - State
     @State private var name: String = ""
     @State private var major: String = ""
@@ -46,19 +48,21 @@ struct ProfileSetUp: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     
+    // Navigation
+    @State private var goToPreExplore = false
+    @State private var submitError: String?
+
     // Styling
     private let brandRed = Color(hex: 0x9E122C)
     private let brandYellow = Color(hex: 0xFBCB77)
     private let fieldBorder = Color(.systemGray3)
     private let placeholderCircle = Color(.systemGray4)
     
-    // Favorite study area placeholder options (replace later)
+    // Favorite study area options (match backend names exactly)
     private let favoriteAreaOptions = [
         "Library",
-        "Café",
-        "Dorm",
-        "Study Hall",
-        "Outdoors"
+        "Cafe",
+        "Study Hall"
     ]
     
     // Enable Next
@@ -66,22 +70,34 @@ struct ProfileSetUp: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !major.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !favoriteArea.isEmpty
+        && studyAreaId != nil
         && !courses.isEmpty
         && !selectedTimes.isEmpty
+        && session.userId != nil
     }
     
-    // Grid for chips (wraps automatically)
+    // Grid for chips
     private var chipColumns: [GridItem] = [
         GridItem(.flexible(minimum: 60), spacing: 12),
         GridItem(.flexible(minimum: 60), spacing: 12),
         GridItem(.flexible(minimum: 60), spacing: 12)
     ]
     
+    // Study areas mapping (Cafe=1, Study Hall=2, Library=3)
+    private var studyAreaId: Int? {
+        switch favoriteArea {
+        case "Library":    return 3
+        case "Cafe":       return 1
+        case "Study Hall": return 2
+        default:           return nil
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Top logo (as in your mock)
+                    // Top logo
                     HStack {
                         Image(.studyBuddyLogo)
                             .renderingMode(.original)
@@ -127,7 +143,6 @@ struct ProfileSetUp: View {
                     
                     // Form fields
                     VStack(spacing: 14) {
-                        // Name
                         TextField("Name", text: $name)
                             .textContentType(.name)
                             .padding(.horizontal, 14)
@@ -137,7 +152,6 @@ struct ProfileSetUp: View {
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
                         
-                        // Major
                         TextField("Major", text: $major)
                             .textContentType(.organizationName)
                             .padding(.horizontal, 14)
@@ -174,7 +188,6 @@ struct ProfileSetUp: View {
                         
                         // Courses container (input + chips)
                         VStack(alignment: .leading, spacing: 12) {
-                            // Input row
                             HStack(spacing: 10) {
                                 TextField("Courses", text: $courseInput, onCommit: addCourse)
                                     .textInputAutocapitalization(.characters)
@@ -188,7 +201,6 @@ struct ProfileSetUp: View {
                                 .accessibilityLabel("Add course")
                             }
                             
-                            // Chips grid (wraps within the container)
                             if !courses.isEmpty {
                                 LazyVGrid(columns: chipColumns, alignment: .leading, spacing: 12) {
                                     ForEach(courses, id: \.self) { course in
@@ -257,12 +269,27 @@ struct ProfileSetUp: View {
                         .padding(.top, 6)
                     }
                     .padding(.horizontal, 24)
+
+                    if let submitError {
+                        Text(submitError)
+                            .font(.footnote)
+                            .foregroundStyle(brandRed)
+                            .padding(.horizontal, 24)
+                    }
+                    
+                    // Hidden NavigationLink to PreExplore
+                    NavigationLink(destination: PreExplore(), isActive: $goToPreExplore) {
+                        EmptyView()
+                    }
+                    .hidden()
                     
                     // Next button
                     Button {
-                        // TODO: handle save and navigate forward
+                        Task {
+                            await submitProfile()
+                        }
                     } label: {
-                        Text("Next")
+                        Text(session.isLoading ? "Saving..." : "Next")
                             .font(.system(size: 20, weight: .bold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -274,7 +301,7 @@ struct ProfileSetUp: View {
                     }
                     .padding(.horizontal, 24)
                     .opacity(canContinue ? 1.0 : 0.6)
-                    .disabled(!canContinue)
+                    .disabled(!canContinue || session.isLoading)
                     
                     Spacer(minLength: 24)
                 }
@@ -286,6 +313,52 @@ struct ProfileSetUp: View {
     }
     
     // MARK: - Actions
+    private func submitProfile() async {
+        submitError = nil
+        guard let uid = session.userId else {
+            submitError = "Missing user id."
+            return
+        }
+        guard let areaId = studyAreaId else {
+            submitError = "Please select a study area."
+            return
+        }
+        
+        // Resolve major (create if needed)
+        guard let majorID = await session.resolveMajorID(from: major) else {
+            submitError = "Please enter a valid major."
+            return
+        }
+        
+        // Resolve courses (create if needed)
+        let courseIDs = await session.resolveCourseIDs(from: courses)
+        if courseIDs.isEmpty {
+            submitError = "Please add at least one valid course (e.g., CS3110)."
+            return
+        }
+        
+        // Resolve study times (predefined ids)
+        let timeIDs = session.resolveStudyTimeIDs(from: selectedTimes)
+        if timeIDs.isEmpty {
+            submitError = "Please select at least one study time."
+            return
+        }
+        
+        let payload = APIManager.CreateProfileRequest(
+            user_id: uid,
+            study_area_id: areaId,
+            course_ids: courseIDs,
+            study_time_ids: timeIDs,
+            major_ids: [majorID]
+        )
+        let ok = await session.createOrUpdateProfile(setup: payload)
+        if ok {
+            goToPreExplore = true
+        } else {
+            submitError = session.errorMessage ?? "Failed to save profile."
+        }
+    }
+
     private func toggle(_ time: StudyTime) {
         if selectedTimes.contains(time) {
             selectedTimes.remove(time)
@@ -297,11 +370,10 @@ struct ProfileSetUp: View {
     private func addCourse() {
         let trimmed = courseInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        // Avoid duplicates (case-insensitive)
         if !courses.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
             courses.append(trimmed)
         }
-        courseInput = "" // keep the field visible, just clear it
+        courseInput = ""
     }
     
     private func removeCourse(_ course: String) {
@@ -310,5 +382,5 @@ struct ProfileSetUp: View {
 }
 
 #Preview {
-    ProfileSetUp()
+    ProfileSetUp().environmentObject(SessionStore())
 }

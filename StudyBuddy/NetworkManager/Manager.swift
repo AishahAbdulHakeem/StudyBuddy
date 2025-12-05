@@ -55,23 +55,21 @@ struct SignupUser: Decodable {
     let username: String?
     let email: String?
     
-    // Try to decode either a top-level user object or a wrapped payload
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
-        // Try decoding as { id, username, email, ... }
         if let flat = try? container.decode([String: AnyDecodable].self) {
-            id = flat["id"]?.asString
-            username = flat["username"]?.asString
-            email = flat["email"]?.asString
+            id = flat["id"]?.asString ?? (flat["user"]?.asDict?["id"]?.asString)
+            username = flat["username"]?.asString ?? flat["user"]?.asDict?["username"]?.asString
+            email = flat["email"]?.asString ?? flat["user"]?.asDict?["email"]?.asString
             return
         }
-        
-        // Fallback to a keyed container to attempt id, username, email directly
         let keyed = try decoder.container(keyedBy: DynamicCodingKeys.self)
         if let idKey = DynamicCodingKeys(stringValue: "id"),
            let idString = try? keyed.decodeIfPresent(FlexibleID.self, forKey: idKey)?.string {
             id = idString
+        } else if let userKey = DynamicCodingKeys(stringValue: "user"),
+                  let nested = try? keyed.decodeIfPresent([String: AnyDecodable].self, forKey: userKey) {
+            id = nested["id"]?.asString
         } else {
             id = nil
         }
@@ -98,6 +96,7 @@ struct AnyDecodable: Decodable {
         if let d = value as? Double { return String(d) }
         return nil
     }
+    var asDict: [String: AnyDecodable]? { value as? [String: AnyDecodable] }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -133,8 +132,7 @@ struct DynamicCodingKeys: CodingKey, Hashable {
 final class APIManager {
     static let shared = APIManager()
     
-    // Adjust this if you move servers
-    private let baseURL = "http://34.21.81.90"
+    private let baseURL = "http://34.21.81.90/"
     
     private let session: Session
     private let encoder: JSONEncoder
@@ -144,6 +142,9 @@ final class APIManager {
         let configuration = URLSessionConfiguration.af.default
         configuration.timeoutIntervalForRequest = 20
         configuration.timeoutIntervalForResource = 30
+        configuration.httpCookieAcceptPolicy = .always
+        configuration.httpShouldSetCookies = true
+        configuration.httpCookieStorage = .shared
         
         self.session = Session(configuration: configuration)
         
@@ -156,40 +157,36 @@ final class APIManager {
         self.decoder = dec
     }
     
-    // MARK: - Signup
+    // MARK: - Signup (existing)
     struct SignupRequest: Encodable {
         let username: String
         let email: String
         let password: String
     }
-    
     struct SignupResult {
+        let userId: Int?
         let user: SignupUser?
         let rawData: Data?
         let statusCode: Int
     }
     
     func signUp(username: String, email: String, password: String, completion: @escaping (Result<SignupResult, APIError>) -> Void) {
-        let path = "/signup/"
+        let path = "signup/"
         guard let url = URL(string: baseURL + path) else {
             completion(.failure(.invalidURL))
             return
         }
         
         let payload = SignupRequest(username: username, email: email, password: password)
-        
-        var headers: HTTPHeaders = [
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        ]
-        
-        // Encode body
         guard let body = try? encoder.encode(payload) else {
             completion(.failure(.decodingFailed))
             return
         }
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
         
-        // Perform request
         session.request(
             url,
             method: .post,
@@ -197,24 +194,21 @@ final class APIManager {
             encoding: JSONDataEncoding(data: body),
             headers: headers
         )
-        .validate(statusCode: 200..<600) // We'll handle codes manually below
+        .validate(statusCode: 200..<600)
         .responseData { [weak self] response in
             guard let self else { return }
-            
             let statusCode = response.response?.statusCode ?? -1
             switch response.result {
             case .success(let data):
                 if statusCode == 201 {
-                    // Try to decode a tolerant user
+                    let userId = self.extractTopLevelID(from: data)
                     let user = try? self.decoder.decode(SignupUser.self, from: data)
-                    completion(.success(SignupResult(user: user, rawData: data, statusCode: statusCode)))
+                    completion(.success(SignupResult(userId: userId, user: user, rawData: data, statusCode: statusCode)))
                 } else {
-                    // Attempt to decode error message from "error" or "message"
                     let message = self.extractErrorMessage(from: data)
                     completion(.failure(.requestFailed(status: statusCode, message: message)))
                 }
             case .failure(let afError):
-                // Try to pull server-provided message if data is present
                 if let data = response.data {
                     let message = self.extractErrorMessage(from: data)
                     completion(.failure(.requestFailed(status: statusCode, message: message ?? afError.localizedDescription)))
@@ -225,9 +219,367 @@ final class APIManager {
         }
     }
     
+    // MARK: - Login
+    struct LoginRequest: Encodable {
+        let username: String
+        let password: String
+    }
+    struct LoginUser: Decodable {
+        let email: String?
+        let id: Int?
+        let profile: AnyDecodable?
+        let username: String?
+    }
+    struct LoginResult {
+        let userId: Int?
+        let user: LoginUser?
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func login(username: String, password: String, completion: @escaping (Result<LoginResult, APIError>) -> Void) {
+        let path = "login/"
+        guard var components = URLComponents(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        components.queryItems = [
+            URLQueryItem(name: "username", value: username),
+            URLQueryItem(name: "password", value: password)
+        ]
+        guard let url = components.url else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        // Using GET since backend reads query params first
+        session.request(
+            url,
+            method: .get
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { [weak self] response in
+            guard let self else { return }
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    let userId = self.extractTopLevelID(from: data)
+                    let user = try? self.decoder.decode(LoginUser.self, from: data)
+                    let resolvedId: Int? = {
+                        if let id = userId { return id }
+                        if let id = user?.id { return id }
+                        return nil
+                    }()
+                    completion(.success(LoginResult(userId: resolvedId, user: user, rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    // MARK: - Profiles
+    struct CreateProfileRequest: Encodable {
+        let user_id: Int
+        let study_area_id: Int
+        let course_ids: [Int]
+        let study_time_ids: [Int]
+        let major_ids: [Int]
+    }
+    
+    struct ProfileDTO: Decodable {
+        let id: Int?
+        let user_id: Int?
+        let study_area_id: Int?
+        let course_ids: [Int]?
+        let study_time_ids: [Int]?
+        let major_ids: [Int]?
+    }
+    
+    struct CreateProfileResult {
+        let profile: ProfileDTO?
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func createProfile(_ request: CreateProfileRequest, completion: @escaping (Result<CreateProfileResult, APIError>) -> Void) {
+        let path = "profiles/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        guard let body = try? encoder.encode(request) else {
+            completion(.failure(.decodingFailed))
+            return
+        }
+        
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        
+        session.request(
+            url,
+            method: .post,
+            parameters: nil,
+            encoding: JSONDataEncoding(data: body),
+            headers: headers
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { [weak self] response in
+            guard let self else { return }
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    let profile = try? self.decoder.decode(ProfileDTO.self, from: data)
+                    completion(.success(CreateProfileResult(profile: profile, rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    func getProfile(forUserId userId: Int, completion: @escaping (Result<ProfileDTO, APIError>) -> Void) {
+        let path = "profiles/"
+        guard var components = URLComponents(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        components.queryItems = [URLQueryItem(name: "user_id", value: String(userId))]
+        guard let url = components.url else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if status == 200 {
+                        if let dto = try? self.decoder.decode(ProfileDTO.self, from: data) {
+                            completion(.success(dto))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+    }
+    
+    // MARK: - Courses (Quick path)
+    struct CourseDTO: Decodable {
+        let id: Int?
+        let code: String?
+    }
+    struct CreateCourseRequest: Encodable {
+        let code: String
+    }
+    struct CreateCourseResult {
+        let course: CourseDTO?
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func createCourse(code: String, completion: @escaping (Result<CreateCourseResult, APIError>) -> Void) {
+        let path = "courses/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        let payload = CreateCourseRequest(code: code)
+        guard let body = try? encoder.encode(payload) else {
+            completion(.failure(.decodingFailed))
+            return
+        }
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        
+        session.request(
+            url,
+            method: .post,
+            parameters: nil,
+            encoding: JSONDataEncoding(data: body),
+            headers: headers
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { [weak self] response in
+            guard let self else { return }
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    let course = try? self.decoder.decode(CourseDTO.self, from: data)
+                    completion(.success(CreateCourseResult(course: course, rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    func getCourses(completion: @escaping (Result<[CourseDTO], APIError>) -> Void) {
+        let path = "courses/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if (200...299).contains(status) {
+                        if let arr = try? self.decoder.decode([CourseDTO].self, from: data) {
+                            completion(.success(arr))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+    }
+    
+    // MARK: - Majors (Quick path)
+    struct MajorDTO: Decodable {
+        let id: Int?
+        let name: String?
+    }
+    struct CreateMajorRequest: Encodable {
+        let name: String
+    }
+    struct CreateMajorResult {
+        let major: MajorDTO?
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func createMajor(name: String, completion: @escaping (Result<CreateMajorResult, APIError>) -> Void) {
+        let path = "majors/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        let payload = CreateMajorRequest(name: name)
+        guard let body = try? encoder.encode(payload) else {
+            completion(.failure(.decodingFailed)); return
+        }
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        
+        session.request(
+            url,
+            method: .post,
+            parameters: nil,
+            encoding: JSONDataEncoding(data: body),
+            headers: headers
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { [weak self] response in
+            guard let self else { return }
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    let major = try? self.decoder.decode(MajorDTO.self, from: data)
+                    completion(.success(CreateMajorResult(major: major, rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    func getMajors(completion: @escaping (Result<[MajorDTO], APIError>) -> Void) {
+        let path = "majors/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if (200...299).contains(status) {
+                        if let arr = try? self.decoder.decode([MajorDTO].self, from: data) {
+                            completion(.success(arr))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+    }
+    
     // MARK: - Helpers
+    private func extractTopLevelID(from data: Data) -> Int? {
+        if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            if let id = dict["id"] as? Int { return id }
+            if let user = dict["user"] as? [String: Any], let id = user["id"] as? Int { return id }
+        }
+        return nil
+    }
+    
     private func extractErrorMessage(from data: Data) -> String? {
-        // Try a tolerant parse for "error" or "message"
         if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
             if let msg = dict["error"] as? String { return msg }
             if let msg = dict["message"] as? String { return msg }

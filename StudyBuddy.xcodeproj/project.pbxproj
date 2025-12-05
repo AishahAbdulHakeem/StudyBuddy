@@ -16,9 +16,22 @@
 		DE98B4692EDE56DE00875E6C /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C473A4E22EE1F52A00C54434 /* Exceptions for "StudyBuddy" folder in "StudyBuddy" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DE98B3E02ED51C9F00875E6C /* StudyBuddy */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DE98B3E32ED51CA000875E6C /* StudyBuddy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C473A4E22EE1F52A00C54434 /* Exceptions for "StudyBuddy" folder in "StudyBuddy" target */,
+			);
 			path = StudyBuddy;
 			sourceTree = "<group>";
 		};

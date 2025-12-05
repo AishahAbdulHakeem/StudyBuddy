@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct LogIn: View {
+    @EnvironmentObject var session: SessionStore
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
@@ -16,9 +17,7 @@ struct LogIn: View {
     private let brandRed = Color(hex: 0x9E122C)
     private let fieldBorder = Color(.systemGray3)
     
-    
     var body: some View {
-        
         NavigationStack{
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground).ignoresSafeArea()
@@ -68,55 +67,62 @@ struct LogIn: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
+                            if let err = session.errorMessage {
+                                Text(err)
+                                    .font(.footnote)
+                                    .foregroundStyle(brandRed)
+                            }
                             
                             HStack {
+                                NavigationLink(destination: ResetPw()){
                                 Text("Forgot Password?")
                                     .foregroundStyle(brandRed)
                                 Spacer()
-                                NavigationLink(destination: ResetPw()){
-//                                    Text("Reset")
-//                                        .fontWeight(.semibold)
-//                                        .foregroundStyle(brandRed)
+                                
+
                                 }
                                 .font(.subheadline)
                                 .padding(.top, 8)
-                                
                             }
                             HStack{
+                                NavigationLink(destination: SignUp()) {
                                 Text("Don't have an account?")
                                     .foregroundStyle(brandRed)
                                 Spacer()
-                                NavigationLink(destination: SignUp()) {
-//                                    Text("Signup")
-//                                        .fontWeight(.semibold)
-//                                        .foregroundStyle(brandRed)
+                                
                                 }
                                 .font(.subheadline)
                                 .padding(.top, 8)
-                                
                             }
+                            
                             NavigationLink(
                                 destination: PreExplore(),
                                 isActive: $gotoPreExplorePage
-                            ) {
-                                EmptyView()
-                            }
+                            ) { EmptyView() }
                             .hidden()
                             
-                            // Sign up button
                             Button {
-                                gotoPreExplorePage = true
+                                Task {
+                                    let ok = await session.login(username: username, password: password)
+                                    if ok { gotoPreExplorePage = true }
+                                }
                             } label: {
-                                Text("Log In")
-                                    .font(.system(size: 22, weight: .bold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .foregroundColor(.white)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(brandRed)
-                                    )
+
+                                HStack {
+                                    if session.isLoading { ProgressView().tint(.white) }
+                                    Text(session.isLoading ? "Logging In..." : "Log In")
+                                        .font(.system(size: 22, weight: .bold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .foregroundColor(.white)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(brandRed)
+                                )
+
                             }
+                            .disabled(session.isLoading || username.isEmpty || password.isEmpty)
                         }
                         .padding(.top, 12)
                     }
@@ -127,10 +133,9 @@ struct LogIn: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        
     }
 }
 
 #Preview {
-    LogIn()
+    LogIn().environmentObject(SessionStore())
 }

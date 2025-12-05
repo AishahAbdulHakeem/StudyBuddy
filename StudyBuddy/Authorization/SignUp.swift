@@ -10,8 +10,7 @@ import SwiftUI
 struct SignUp: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var profile: Profile
-
-    @StateObject private var viewModel = SignUpViewModel()
+    @EnvironmentObject var session: SessionStore
     
     @State private var username: String = ""
     @State private var email: String = ""
@@ -35,21 +34,17 @@ struct SignUp: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Logo
                         Image("StudyBuddySignUpLogo")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 180, height: 120)
                             .padding(.top, 40)
                         
-                        // Subtitle
                         Text("Ready to lock in?")
                             .font(.headline)
                             .foregroundStyle(.primary)
                         
-                        // Form card
                         VStack(spacing: 14) {
-                            // Username
                             TextField("Username", text: $username)
                                 .textContentType(.username)
                                 .autocapitalization(.none)
@@ -61,7 +56,6 @@ struct SignUp: View {
                                         .stroke(fieldBorder, lineWidth: 1)
                                 )
                             
-                            // Email
                             TextField("Email", text: $email)
                                 .keyboardType(.emailAddress)
                                 .textContentType(.emailAddress)
@@ -74,7 +68,6 @@ struct SignUp: View {
                                         .stroke(fieldBorder, lineWidth: 1)
                                 )
                             
-                            // Password with show/hide
                             HStack {
                                 Group {
                                     if showPassword {
@@ -99,7 +92,7 @@ struct SignUp: View {
                                     .stroke(fieldBorder, lineWidth: 1)
                             )
                             
-                            if let error = viewModel.errorMessage, !error.isEmpty {
+                            if let error = session.errorMessage, !error.isEmpty {
                                 Text(error)
                                     .font(.footnote)
                                     .foregroundStyle(brandRed)
@@ -107,7 +100,6 @@ struct SignUp: View {
                                     .padding(.top, 4)
                             }
                             
-                            // Have an account? Login
                             HStack {
                                 Text("Have an account?")
                                     .foregroundStyle(brandRed)
@@ -121,27 +113,25 @@ struct SignUp: View {
                             .font(.subheadline)
                             .padding(.top, 8)
                             
-                            // Hidden NavigationLink triggered by state
                             NavigationLink(
                                 destination: ProfileSetUp().environmentObject(profile),
                                 isActive: $goToEditProfile
-                            ) {
-                                EmptyView()
-                            }
+                            ) { EmptyView() }
                             .hidden()
                             
-                            // Sign up button
                             Button {
                                 Task {
-                                    await handleSignUp()
+                                    let ok = await session.signUp(username: username, email: email, password: password)
+                                    if ok {
+                                        profile.name = username
+                                        profile.email = email
+                                        goToEditProfile = true
+                                    }
                                 }
                             } label: {
                                 HStack {
-                                    if viewModel.isLoading {
-                                        ProgressView()
-                                            .tint(.white)
-                                    }
-                                    Text(viewModel.isLoading ? "Creating account..." : "Sign up")
+                                    if session.isLoading { ProgressView().tint(.white) }
+                                    Text(session.isLoading ? "Creating account..." : "Sign up")
                                         .font(.system(size: 22, weight: .bold))
                                 }
                                 .frame(maxWidth: .infinity)
@@ -154,8 +144,8 @@ struct SignUp: View {
                                 .shadow(color: brandRed.opacity(0.25), radius: 6, y: 3)
                             }
                             .padding(.top, 12)
-                            .disabled(!canSubmit || viewModel.isLoading)
-                            .opacity((!canSubmit || viewModel.isLoading) ? 0.7 : 1.0)
+                            .disabled(!canSubmit || session.isLoading)
+                            .opacity((!canSubmit || session.isLoading) ? 0.7 : 1.0)
                         }
                         .padding(20)
 //                        .background(
@@ -172,19 +162,10 @@ struct SignUp: View {
             }
         }
     }
-    
-    private func handleSignUp() async {
-        let user = await viewModel.signUp(username: username, email: email, password: password)
-        guard user != nil else { return }
-        // Populate Profile with username/email for the next screen
-        profile.name = username
-        profile.email = email
-        // Proceed to profile setup
-        goToEditProfile = true
-    }
 }
 
 #Preview {
     SignUp()
         .environmentObject(Profile())
+        .environmentObject(SessionStore())
 }
