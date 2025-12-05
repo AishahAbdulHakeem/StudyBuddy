@@ -117,13 +117,7 @@ struct ExplorePage: View {
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
                             }
-                            NavigationLink(destination: CalendarPage()) {
-                                Image(systemName: "calendar")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 30, height: 30)
-                                    .foregroundStyle(Color(.white))
-                            }
+
                             NavigationLink(destination: ExplorePage()) {
                                 Image(systemName: "hand.raised.fill")
                                     .resizable()

@@ -122,19 +122,15 @@ final class Profile: ObservableObject {
         }
     }
     
-    // Legacy single fields (kept for compatibility if you still use them somewhere)
     @Published var name: String = ""
     @Published var major: String = "" // optional: can set to majors.first if you want a "primary" major
     @Published var favoriteArea: String = ""
     
-    // New multi-value fields
     @Published var majors: [String] = []
     @Published var minors: [String] = []
     
-    // College (single)
     @Published var college: String = ""
     
-    // Courses and preferences
     @Published var courses: [String] = []
     @Published var selectedTimes: Set<StudyTime> = []
     @Published var selectedLocations: Set<Location> = []

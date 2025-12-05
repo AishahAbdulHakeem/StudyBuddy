@@ -20,7 +20,7 @@ struct HomePage: View {
                         .frame(width: 56, height: 64)
                         .foregroundStyle(Color(.white))
                     
-                    Image(.studyBuddyTextRed) // A standard SwiftUI progress indicator
+                    Image(.studyBuddyTextRed)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 160, height: 41)
@@ -31,7 +31,7 @@ struct HomePage: View {
                 Spacer()
                 
                 ZStack {
-                    HStack(spacing: 40) {
+                    HStack(spacing: 60) {
                             
                             NavigationLink(destination: HomePage()) {
                                 Image("StudyBuddyLogo")
@@ -39,42 +39,29 @@ struct HomePage: View {
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
-//                                    .padding(.bottom)
-
-                            }
-                            
-                            NavigationLink(destination: CalendarPage()) {
-                                Image(systemName: "calendar")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 30, height: 30)
-                                    .foregroundStyle(Color(.white))
-//                                    .padding(.bottom)
 
                             }
                             
                             NavigationLink(destination: ExplorePage()) {
-                                Image(systemName: "hand.raised.fill")
+                                Image(.matchInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
-//                                    .padding(.bottom)
 
                             }
                             
                             NavigationLink(destination: MessagesPage()) {
-                                Image(systemName: "message")
+                                Image(.messagesInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
-//                                    .padding(.bottom)
 
                             }
                             
                             NavigationLink(destination: ProfilePage()) {
-                                Image(systemName: "person.circle.fill")
+                                Image(.profileInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)

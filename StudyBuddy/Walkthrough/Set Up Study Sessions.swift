@@ -20,9 +20,11 @@ struct SetUpStudySessions: View {
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                
                 Image(.calendarImg)
                     .padding(.bottom, 250)
                     .frame(width: 314, height: 286)
+                
                 VStack {
                     Spacer()
                     Text("Set up study sessions!")

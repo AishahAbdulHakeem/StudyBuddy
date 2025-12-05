@@ -88,7 +88,6 @@ struct ProfilePage: View {
                             avatar
 
                             VStack(alignment: .leading, spacing: 6) {
-
                                 
                                 Text(displayName)
                                     .font(.title2.weight(.semibold))
@@ -244,13 +243,6 @@ struct ProfilePage: View {
                         HStack(spacing: 40) {
                             NavigationLink(destination: HomePage()) {
                                 Image("StudyBuddyLogo")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 30, height: 30)
-                                    .foregroundStyle(Color(.white))
-                            }
-                            NavigationLink(destination: CalendarPage()) {
-                                Image(systemName: "calendar")
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)

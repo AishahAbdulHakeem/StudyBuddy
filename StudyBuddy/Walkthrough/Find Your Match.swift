@@ -19,6 +19,7 @@ struct FindYourMatch: View {
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                
                 Image(.findYourMatch)
                     .padding(.bottom, 320)
                     .frame(width: 256, height: 256)

@@ -107,7 +107,7 @@ struct SwipeCardContainer<Content: View>: View {
         onSwipeRight: {}
     ) {
         Rectangle()
-            .fill(Color.blue)
+            .fill(Color.black)
             .frame(width: 300, height: 400)
     }
 }

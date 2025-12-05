@@ -73,15 +73,6 @@ struct LogIn: View {
                                     .foregroundStyle(brandRed)
                             }
                             
-                            // Forgot Password removed (no backend)
-                            HStack {
-                                Text("Forgot Password?")
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                            }
-                            .font(.subheadline)
-                            .padding(.top, 8)
-                            
                             HStack{
                                 NavigationLink(destination: SignUp()) {
                                 Text("Don't have an account?")
@@ -118,7 +109,6 @@ struct LogIn: View {
                                     RoundedRectangle(cornerRadius: 14)
                                         .fill(brandRed)
                                 )
-
                             }
                             .disabled(session.isLoading || username.isEmpty || password.isEmpty)
                         }

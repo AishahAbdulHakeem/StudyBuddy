@@ -231,7 +231,7 @@ final class SessionStore: ObservableObject {
         
         let p = profile
         
-        // Study area mapping: Cafe=1, Study Hall=2, Library=3 (matches your backend)
+        // Study area mapping: Cafe=1, Study Hall=2, Library=3
         var studyAreaId: Int?
         if p.selectedLocations.contains(.cafe) {
             studyAreaId = 1
@@ -243,7 +243,7 @@ final class SessionStore: ObservableObject {
             studyAreaId = nil
         }
         
-        // Courses -> core IDs (create-if-needed)
+        // Courses -> core IDs 
         let courseIDs = await resolveCourseIDs(from: p.courses)
         
         // Majors -> IDs (take the first as “primary”)

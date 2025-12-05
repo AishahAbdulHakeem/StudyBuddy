@@ -13,9 +13,9 @@ struct ContentView: View {
     var body: some View {
         Group {
             if session.isAuthenticated {
-                SetUpStudySessions()
+                SwipeThroughProfiles()
             } else {
-                SetUpStudySessions()
+                SwipeThroughProfiles()
             }
         }
     }

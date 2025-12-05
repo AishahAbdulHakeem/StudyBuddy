@@ -13,12 +13,14 @@ struct SwipeThroughProfiles: View {
             ZStack {
                 Color(hex: 0x9E122C)
                     .ignoresSafeArea()
+                
                 Image(.swipeThroughImg)
                     .resizable()
                     .scaledToFit()
                     .frame(alignment: .bottom)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .ignoresSafeArea()
+                
                 Image(.swipeImg)
                     .padding(.bottom, 250)
                     .frame(width: 314, height: 286)
