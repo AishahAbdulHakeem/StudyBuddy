@@ -54,16 +54,17 @@ def signup():
 def login():
     """
     Logs in with the provided username & password.
-    Request body:
-    {
-        username: <STRING, required>,
-        password: <STRING, required>
-    }
-    Make sure to include both, otherwise will return error 400.
+    Accepts query params (?username=...&password=...) and also
+    supports JSON body for compatibility.
     """
-    body = json.loads(request.data)
-    username = body.get("username")
-    password = body.get("password")
+    username = request.args.get("username")
+    password = request.args.get("password")
+
+    # Fallback to JSON body if query params not provided
+    if not username or not password:
+        body = json.loads(request.data or "{}")
+        username = username or body.get("username")
+        password = password or body.get("password")
 
     if not username or not password:
         return failure_response("username and password are required", 400)
@@ -74,7 +75,7 @@ def login():
 
     return success_response(user.serialize())
 
-@app.route("/users/<int:id>")
+@app.route("/users/<int:id>/")
 def get_user(id):
     user = User.query.filter_by(id=id).first()
     if user is None:
@@ -88,16 +89,6 @@ def get_all_users():
     """
     users = User.query.all()
     return success_response([u.serialize() for u in users])
-
-@app.route("/users/<int:id>/", methods=["GET"])
-def get_user_with_trailing(id):
-    """
-    Retrieves a user by id (trailing slash variant).
-    """
-    user = User.query.get(id)
-    if user is None:
-        return failure_response("user not found", 404)
-    return success_response(user.serialize())
 
 @app.route("/courses/", methods=["POST"])
 def post_course():
