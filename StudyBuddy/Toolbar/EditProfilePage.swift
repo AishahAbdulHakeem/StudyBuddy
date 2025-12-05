@@ -1,8 +1,9 @@
 //
-//  ProfilePage.swift
+//  EditProfilePage.swift
 //  StudyBuddy
 //
 //  Created by Aishah A on 11/25/25.
+//
 
 import SwiftUI
 import PhotosUI
@@ -10,6 +11,7 @@ import PhotosUI
 struct EditProfilePage: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var profile: Profile
+    @EnvironmentObject var session: SessionStore
 
     // Branding
     private let brandRed = Color(hex: 0x9E122C)
@@ -37,6 +39,10 @@ struct EditProfilePage: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
 
+    // Saving state
+    @State private var isSaving: Bool = false
+    @State private var saveError: String?
+
     // Bottom bar height spacing
     private let bottomBarHeight: CGFloat = 100
     private let bottomBarPadding: CGFloat = 16
@@ -60,7 +66,7 @@ struct EditProfilePage: View {
             ScrollView {
                 VStack(spacing: 20) {
 
-                    // Top row: logo + back chevron (like screenshot)
+                    // Top row: logo + invisible back chevron (layout match)
                     HStack {
                         Image("StuddyBuddyLogoRed")
                             .font(.system(size: 28))
@@ -75,7 +81,7 @@ struct EditProfilePage: View {
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(.primary)
                         }
-                        .opacity(0)
+                        .opacity(0) // placeholder
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
@@ -122,13 +128,12 @@ struct EditProfilePage: View {
                         }
                     }
 
-                    // Fields stack
                     VStack(spacing: 14) {
                         // Name
-                        field(text: $name, placeholder: "Testing")
+                        field(text: $name, placeholder: "Name")
 
-                        // Handle (not in model yet)
-                        field(text: $handle, placeholder: "@testing _123")
+                        // Handle (not persisted to backend yet; purely UI/branding)
+                        field(text: $handle, placeholder: "@handle")
 
                         // College
                         field(text: $college, placeholder: "College (e.g., Engineering)")
@@ -225,6 +230,14 @@ struct EditProfilePage: View {
                             .padding(.top, 6)
                         }
                         .padding(.top, 4)
+
+                        if let saveError {
+                            Text(saveError)
+                                .font(.footnote)
+                                .foregroundStyle(brandRed)
+                                .multilineTextAlignment(.leading)
+                                .padding(.top, 6)
+                        }
                     }
                     .padding(.horizontal, 24)
 
@@ -234,7 +247,7 @@ struct EditProfilePage: View {
                 .padding(.bottom, 16)
             }
 
-            // Bottom bar (restored)
+            // Bottom bar
             VStack {
                 Spacer()
                 ZStack {
@@ -290,10 +303,55 @@ struct EditProfilePage: View {
         .onAppear(perform: loadFromProfile)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Save") { saveToProfile() }
-                    .font(.body.weight(.semibold))
+                Button {
+                    Task { await handleSave() }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Text("Save")
+                            .font(.body.weight(.semibold))
+                    }
+                }
+                .disabled(isSaving)
             }
         }
+    }
+
+    // MARK: - Save flow
+
+    private func handleSave() async {
+        saveError = nil
+        isSaving = true
+        defer { isSaving = false }
+
+        // 1) Update local Profile model (UI state)
+        saveToProfileLocally()
+
+        // 2) Push to backend
+        let ok = await session.syncProfileToBackend()
+        if ok {
+            dismiss()
+        } else {
+            saveError = session.errorMessage ?? "Failed to save changes to the server."
+        }
+    }
+
+    private func saveToProfileLocally() {
+        profile.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        profile.majors = majors
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        profile.minors = minors
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        profile.college = college.trimmingCharacters(in: .whitespacesAndNewlines)
+        profile.courses = courses
+        profile.selectedTimes = selectedTimes
+        profile.selectedLocations = selectedLocations
+        
+        // keep legacy major in sync
+        profile.major = profile.majors.first ?? ""
     }
 
     // MARK: - Subviews
@@ -390,21 +448,6 @@ struct EditProfilePage: View {
         courses = profile.courses
         selectedTimes = profile.selectedTimes
         selectedLocations = profile.selectedLocations
-    }
-
-    private func saveToProfile() {
-        profile.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        profile.majors = majors.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        profile.minors = minors.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        profile.college = college.trimmingCharacters(in: .whitespacesAndNewlines)
-        profile.courses = courses
-        profile.selectedTimes = selectedTimes
-        profile.selectedLocations = selectedLocations
-        
-        // Optionally keep legacy "major" in sync with first major, if you still use it elsewhere
-        profile.major = profile.majors.first ?? ""
-        
-        dismiss()
     }
 
     private func toggleTime(_ time: Profile.StudyTime) {
@@ -610,7 +653,8 @@ private extension View {
     p.courses = ["CS 3110", "CS 2800", "MATH 2930", "CHIN 1109", "INFO 1998"]
     p.selectedTimes = [.day, .morning]
     p.selectedLocations = [.library, .studyHall]
+    let session = SessionStore()
     return EditProfilePage()
         .environmentObject(p)
+        .environmentObject(session)
 }
-

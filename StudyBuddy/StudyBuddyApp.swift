@@ -9,14 +9,13 @@ import SwiftUI
 
 @main
 struct StudyBuddyApp: App {
-    @StateObject private var profile = Profile()
     @StateObject private var session = SessionStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(profile)
                 .environmentObject(session)
+                .environmentObject(session.profile)
                 .task {
                     await session.restoreOnLaunch()
                 }

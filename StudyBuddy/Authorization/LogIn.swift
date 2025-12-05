@@ -73,16 +73,15 @@ struct LogIn: View {
                                     .foregroundStyle(brandRed)
                             }
                             
+                            // Forgot Password removed (no backend)
                             HStack {
-                                NavigationLink(destination: ResetPw()){
                                 Text("Forgot Password?")
-                                    .foregroundStyle(brandRed)
+                                    .foregroundStyle(.secondary)
                                 Spacer()
-
-                                }
-                                .font(.subheadline)
-                                .padding(.top, 8)
                             }
+                            .font(.subheadline)
+                            .padding(.top, 8)
+                            
                             HStack{
                                 NavigationLink(destination: SignUp()) {
                                 Text("Don't have an account?")

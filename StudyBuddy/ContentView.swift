@@ -7,72 +7,25 @@
 
 import SwiftUI
 
-
-struct LoadingIndicatorView: View {
-    var body: some View {
-        ZStack {
-            Color(hex: 0xB40023)
-                .ignoresSafeArea()
-            VStack {
-                Image(.studyBuddyLogo)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220, height: 85)
-                    .foregroundStyle(Color(.white))
-                Image(.studyBuddy) // A standard SwiftUI progress indicator
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 220, height: 220)
-                    .foregroundStyle(Color(.white))
-            }
-        }
-    }
-}
-struct LoadedContentView: View {
-    var body: some View {
-        ZStack {
-            Color(hex: 0xB40023)
-                .ignoresSafeArea()
-            SwipeThroughProfiles()
-        }
-    }
-}
 struct ContentView: View {
-    @State private var isLoading = true
-            var body: some View {
-                VStack {
-                    if isLoading {
-                        LoadingIndicatorView() // A custom view for the loading state
-                    } else {
-                        LoadedContentView() // The actual content to display after loading
-                    }
-                }
-                .onAppear {
-                    // Simulate a network request or data fetching
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        isLoading = false // Set to false when loading is complete
-                    }
-                }
+    @EnvironmentObject var session: SessionStore
+
+    var body: some View {
+        Group {
+            if session.isAuthenticated {
+                // Go to your real app shell; you currently use PreExplore -> HomePage
+                PreExplore()
+            } else {
+                // Start with auth flow
+                SetUpStudySessions() // or SignUp/LogIn directly if you prefer
             }
         }
-
+    }
+}
 
 #Preview {
-    // Provide all EnvironmentObjects that any descendant may need
-    let profile = Profile()
-    let messages = MessagesModel()
-
-    // Seed some optional preview data if you like
-    profile.name = "Preview User"
-    profile.majors = ["Computer Science 28’"]
-    profile.selectedTimes = [.day, .morning]
-    profile.selectedLocations = [.library]
-
-    messages.matches = [
-        DummyUser(name: "Alice Chen", major: "CS 2027", avatar: "avatar1")
-    ]
-
+    let session = SessionStore()
     return ContentView()
-        .environmentObject(profile)
-        .environmentObject(messages)
+        .environmentObject(session)
+        .environmentObject(session.profile)
 }

@@ -353,10 +353,13 @@ struct ProfileSetUp: View {
         )
         let ok = await session.createOrUpdateProfile(setup: payload)
         if ok {
+            // New: refresh the in-memory profile from backend so ProfilePage shows real data
+            await session.fetchAndPopulateProfileForCurrentUser()
             goToPreExplore = true
         } else {
             submitError = session.errorMessage ?? "Failed to save profile."
         }
+
     }
 
     private func toggle(_ time: StudyTime) {

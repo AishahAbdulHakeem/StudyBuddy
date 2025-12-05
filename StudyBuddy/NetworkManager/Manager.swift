@@ -33,7 +33,7 @@ enum APIError: Error, LocalizedError {
     }
 }
 
-// MARK: - Flexible decoders for unknown schema
+// MARK: - Helpers for tolerant decoding (mostly for signup/login)
 struct FlexibleID: Decodable {
     let string: String
     init(from decoder: Decoder) throws {
@@ -50,43 +50,6 @@ struct FlexibleID: Decodable {
     }
 }
 
-struct SignupUser: Decodable {
-    let id: String?
-    let username: String?
-    let email: String?
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let flat = try? container.decode([String: AnyDecodable].self) {
-            id = flat["id"]?.asString ?? (flat["user"]?.asDict?["id"]?.asString)
-            username = flat["username"]?.asString ?? flat["user"]?.asDict?["username"]?.asString
-            email = flat["email"]?.asString ?? flat["user"]?.asDict?["email"]?.asString
-            return
-        }
-        let keyed = try decoder.container(keyedBy: DynamicCodingKeys.self)
-        if let idKey = DynamicCodingKeys(stringValue: "id"),
-           let idString = try? keyed.decodeIfPresent(FlexibleID.self, forKey: idKey)?.string {
-            id = idString
-        } else if let userKey = DynamicCodingKeys(stringValue: "user"),
-                  let nested = try? keyed.decodeIfPresent([String: AnyDecodable].self, forKey: userKey) {
-            id = nested["id"]?.asString
-        } else {
-            id = nil
-        }
-        if let uKey = DynamicCodingKeys(stringValue: "username") {
-            username = try? keyed.decodeIfPresent(String.self, forKey: uKey)
-        } else {
-            username = nil
-        }
-        if let eKey = DynamicCodingKeys(stringValue: "email") {
-            email = try? keyed.decodeIfPresent(String.self, forKey: eKey)
-        } else {
-            email = nil
-        }
-    }
-}
-
-// Helper to decode arbitrary JSON dictionaries in a tolerant way
 struct AnyDecodable: Decodable {
     let value: Any
     
@@ -128,6 +91,43 @@ struct DynamicCodingKeys: CodingKey, Hashable {
     }
 }
 
+// MARK: - Signup models
+struct SignupUser: Decodable {
+    let id: String?
+    let username: String?
+    let email: String?
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let flat = try? container.decode([String: AnyDecodable].self) {
+            id = flat["id"]?.asString ?? (flat["user"]?.asDict?["id"]?.asString)
+            username = flat["username"]?.asString ?? flat["user"]?.asDict?["username"]?.asString
+            email = flat["email"]?.asString ?? flat["user"]?.asDict?["email"]?.asString
+            return
+        }
+        let keyed = try decoder.container(keyedBy: DynamicCodingKeys.self)
+        if let idKey = DynamicCodingKeys(stringValue: "id"),
+           let idString = try? keyed.decodeIfPresent(FlexibleID.self, forKey: idKey)?.string {
+            id = idString
+        } else if let userKey = DynamicCodingKeys(stringValue: "user"),
+                  let nested = try? keyed.decodeIfPresent([String: AnyDecodable].self, forKey: userKey) {
+            id = nested["id"]?.asString
+        } else {
+            id = nil
+        }
+        if let uKey = DynamicCodingKeys(stringValue: "username") {
+            username = try? keyed.decodeIfPresent(String.self, forKey: uKey)
+        } else {
+            username = nil
+        }
+        if let eKey = DynamicCodingKeys(stringValue: "email") {
+            email = try? keyed.decodeIfPresent(String.self, forKey: eKey)
+        } else {
+            email = nil
+        }
+    }
+}
+
 // MARK: - APIManager
 final class APIManager {
     static let shared = APIManager()
@@ -157,7 +157,7 @@ final class APIManager {
         self.decoder = dec
     }
     
-    // MARK: - Signup (existing)
+    // MARK: - Signup
     struct SignupRequest: Encodable {
         let username: String
         let email: String
@@ -219,16 +219,12 @@ final class APIManager {
         }
     }
     
-    // MARK: - Login
-    struct LoginRequest: Encodable {
-        let username: String
-        let password: String
-    }
+    // MARK: - Login (GET /login/?username=&password=)
     struct LoginUser: Decodable {
         let email: String?
         let id: Int?
-        let profile: AnyDecodable?
         let username: String?
+        let profile: AnyDecodable?
     }
     struct LoginResult {
         let userId: Int?
@@ -252,42 +248,85 @@ final class APIManager {
             return
         }
         
-        // Using GET since backend reads query params first
-        session.request(
-            url,
-            method: .get
-        )
-        .validate(statusCode: 200..<600)
-        .responseData { [weak self] response in
-            guard let self else { return }
-            let status = response.response?.statusCode ?? -1
-            switch response.result {
-            case .success(let data):
-                if (200...299).contains(status) {
-                    let userId = self.extractTopLevelID(from: data)
-                    let user = try? self.decoder.decode(LoginUser.self, from: data)
-                    let resolvedId: Int? = {
-                        if let id = userId { return id }
-                        if let id = user?.id { return id }
-                        return nil
-                    }()
-                    completion(.success(LoginResult(userId: resolvedId, user: user, rawData: data, statusCode: status)))
-                } else {
-                    let message = self.extractErrorMessage(from: data)
-                    completion(.failure(.requestFailed(status: status, message: message)))
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if (200...299).contains(status) {
+                        let userId = self.extractTopLevelID(from: data)
+                        let user = try? self.decoder.decode(LoginUser.self, from: data)
+                        let resolvedId: Int? = {
+                            if let id = userId { return id }
+                            if let id = user?.id { return id }
+                            return nil
+                        }()
+                        completion(.success(LoginResult(userId: resolvedId, user: user, rawData: data, statusCode: status)))
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    if let data = response.data {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                    } else {
+                        completion(.failure(.unknown(afError)))
+                    }
                 }
-            case .failure(let afError):
-                if let data = response.data {
-                    let message = self.extractErrorMessage(from: data)
-                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
-                } else {
+            }
+    }
+    
+    // MARK: - User endpoint (GET /users/<id>/)
+    struct UserProfileRef: Decodable {
+        let has_profile_image_blob: Bool?
+        let id: Int?
+        let profile_image_mime: String?
+        let study_area_id: Int?
+        let user_id: Int?
+    }
+    
+    struct UserDTO: Decodable {
+        let email: String?
+        let id: Int?
+        let profile: UserProfileRef?
+        let username: String?
+    }
+    
+    func getUser(id: Int, completion: @escaping (Result<UserDTO, APIError>) -> Void) {
+        let path = "users/\(id)"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if status == 200 {
+                        if let user = try? self.decoder.decode(UserDTO.self, from: data) {
+                            completion(.success(user))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
                     completion(.failure(.unknown(afError)))
                 }
             }
-        }
     }
     
     // MARK: - Profiles
+    
+    // For create (setup)
     struct CreateProfileRequest: Encodable {
         let user_id: Int
         let study_area_id: Int
@@ -359,16 +398,30 @@ final class APIManager {
         }
     }
     
-    func getProfile(forUserId userId: Int, completion: @escaping (Result<ProfileDTO, APIError>) -> Void) {
-        let path = "profiles/"
-        guard var components = URLComponents(string: baseURL + path) else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        components.queryItems = [URLQueryItem(name: "user_id", value: String(userId))]
-        guard let url = components.url else {
-            completion(.failure(.invalidURL))
-            return
+    // Rich profile for GET /profiles/<id>/
+    struct RichProfileDTO: Decodable {
+        struct Course: Decodable { let id: Int?; let code: String? }
+        struct Major: Decodable { let id: Int?; let name: String? }
+        struct StudyArea: Decodable { let id: Int?; let name: String? }
+        struct StudyTime: Decodable { let id: Int?; let name: String? }
+        
+        let id: Int?
+        let user_id: Int?
+        let courses: [Course]?
+        let majors: [Major]?
+        let study_area: StudyArea?
+        let study_times: [StudyTime]?
+        
+        let has_profile_image_blob: Bool?
+        let profile_image_blob_base64: String?
+        let profile_image_blob_url: String?
+        let profile_image_mime: String?
+    }
+    
+    func getProfile(id: Int, completion: @escaping (Result<RichProfileDTO, APIError>) -> Void) {
+        let path = "profiles/\(id)"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
         }
         
         session.request(url, method: .get)
@@ -379,7 +432,7 @@ final class APIManager {
                 switch response.result {
                 case .success(let data):
                     if status == 200 {
-                        if let dto = try? self.decoder.decode(ProfileDTO.self, from: data) {
+                        if let dto = try? self.decoder.decode(RichProfileDTO.self, from: data) {
                             completion(.success(dto))
                         } else {
                             completion(.failure(.decodingFailed))
@@ -394,7 +447,66 @@ final class APIManager {
             }
     }
     
-    // MARK: - Courses (Quick path)
+    // 🔹 UPDATE PROFILE (PUT /profiles/<id>/)
+    struct UpdateProfileRequest: Encodable {
+        let study_area_id: Int?
+        let course_ids: [Int]?
+        let study_time_ids: [Int]?
+        let major_ids: [Int]?
+    }
+    
+    struct UpdateProfileResult {
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func updateProfile(id: Int, request: UpdateProfileRequest, completion: @escaping (Result<UpdateProfileResult, APIError>) -> Void) {
+        let path = "profiles/\(id)/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        guard let body = try? encoder.encode(request) else {
+            completion(.failure(.decodingFailed))
+            return
+        }
+        
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        
+        session.request(
+            url,
+            method: .put,
+            parameters: nil,
+            encoding: JSONDataEncoding(data: body),
+            headers: headers
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { response in
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    completion(.success(UpdateProfileResult(rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    // MARK: - Courses
     struct CourseDTO: Decodable {
         let id: Int?
         let code: String?
@@ -483,7 +595,7 @@ final class APIManager {
             }
     }
     
-    // MARK: - Majors (Quick path)
+    // MARK: - Majors
     struct MajorDTO: Decodable {
         let id: Int?
         let name: String?
