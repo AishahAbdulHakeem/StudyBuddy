@@ -175,6 +175,11 @@ final class SessionStore: ObservableObject {
 
         let p = Profile()
 
+        // Name
+        if let name = dto.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            p.name = name
+        }
+
         // Courses
         p.courses = (dto.courses ?? [])
             .compactMap { $0.code?.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -185,6 +190,16 @@ final class SessionStore: ObservableObject {
             .compactMap { $0.name?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         p.major = p.majors.first ?? ""
+
+        // Minors (names only)
+        p.minors = (dto.minors ?? [])
+            .compactMap { $0.name?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // College
+        if let collegeName = dto.college?.name?.trimmingCharacters(in: .whitespacesAndNewlines), !collegeName.isEmpty {
+            p.college = collegeName
+        }
 
         // Study times -> Profile.StudyTime set
         let times = Set((dto.study_times ?? []).compactMap { st in
@@ -210,13 +225,12 @@ final class SessionStore: ObservableObject {
             if let loc { p.selectedLocations = [loc] }
         }
 
-        // Photo from DTO if base64 is present (some backends include it)
+        // Photo (base64 from backend)
         if let b64 = dto.profile_image_blob_base64,
            let data = Data(base64Encoded: b64) {
             p.photoData = data
         }
 
-        // Assign the profile built so far
         self.profile = p
 
         // 3) If backend indicates an image exists but DTO had no base64, fetch it from /profiles/{id}/image/
@@ -224,7 +238,6 @@ final class SessionStore: ObservableObject {
         if p.photoData == nil, imageExistsFlag {
             if let img = await APIManager.shared.fetchProfileImage(profileId: profileId),
                let data = img.jpegData(compressionQuality: 0.9) {
-                // Persist into model and publish a ready UIImage
                 self.profile.photoData = data
                 self.profileImage = img
             }
@@ -248,6 +261,7 @@ final class SessionStore: ObservableObject {
 
         let p = profile
 
+        // Study area mapping: Cafe=1, Study Hall=2, Library=3 (matches your backend)
         var studyAreaId: Int?
         if p.selectedLocations.contains(.cafe) {
             studyAreaId = 1
@@ -259,6 +273,7 @@ final class SessionStore: ObservableObject {
             studyAreaId = nil
         }
 
+        // Courses -> core IDs (create-if-needed)
         let courseIDs = await resolveCourseIDs(from: p.courses)
 
         // Majors -> IDs (take the first as “primary”)

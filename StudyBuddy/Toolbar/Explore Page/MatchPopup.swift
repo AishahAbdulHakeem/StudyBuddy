@@ -78,19 +78,4 @@ struct MatchPopup: View {
     }
 }
 
-#Preview {
-    let dto = APIManager.RichProfileDTO(
-        id: 1,
-        user_id: 2,
-        courses: [],
-        majors: [],
-        study_area: nil,
-        study_times: [],
-        has_profile_image_blob: false,
-        profile_image_blob_base64: nil,
-        profile_image_blob_url: nil,
-        profile_image_mime: nil
-    )
-    let mu = MatchUser(dto: dto)
-    return MatchPopup(user: mu, visible: .constant(true), remoteImage: nil)
-}
+

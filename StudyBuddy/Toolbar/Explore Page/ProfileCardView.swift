@@ -268,25 +268,3 @@ struct ProfileCardView: View {
     }
 }
 
-#Preview {
-    let p = Profile()
-    let user = MatchUser(
-        dto: APIManager.RichProfileDTO(
-            id: 1,
-            user_id: 2,
-            courses: [APIManager.RichProfileDTO.Course(id: 1, code: "CS2800")],
-            majors: [APIManager.RichProfileDTO.Major(id: 2, name: "Computer Science")],
-            study_area: APIManager.RichProfileDTO.StudyArea(id: 1, name: "Cafe"),
-            study_times: [
-                APIManager.RichProfileDTO.StudyTime(id: 1, name: "morning"),
-                APIManager.RichProfileDTO.StudyTime(id: 2, name: "day")
-            ],
-            has_profile_image_blob: false,
-            profile_image_blob_base64: nil,
-            profile_image_blob_url: nil,
-            profile_image_mime: nil
-        )
-    )
-    return ProfileCardView(user: user, remoteImage: nil)
-        .environmentObject(p)
-}

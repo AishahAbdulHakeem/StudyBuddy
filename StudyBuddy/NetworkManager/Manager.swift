@@ -281,41 +281,15 @@ final class APIManager {
         let username: String?
     }
     
-    func getUser(id: Int, completion: @escaping (Result<UserDTO, APIError>) -> Void) {
-        let path = "users/\(id)"
-        guard let url = URL(string: baseURL + path) else {
-            completion(.failure(.invalidURL)); return
-        }
-        
-        session.request(url, method: .get)
-            .validate(statusCode: 200..<600)
-            .responseData { [weak self] response in
-                guard let self else { return }
-                let status = response.response?.statusCode ?? -1
-                switch response.result {
-                case .success(let data):
-                    if status == 200 {
-                        if let user = try? self.decoder.decode(UserDTO.self, from: data) {
-                            completion(.success(user))
-                        } else {
-                            completion(.failure(.decodingFailed))
-                        }
-                    } else {
-                        let message = self.extractErrorMessage(from: data)
-                        completion(.failure(.requestFailed(status: status, message: message)))
-                    }
-                case .failure(let afError):
-                    completion(.failure(.unknown(afError)))
-                }
-            }
-    }
-    
+    // UPDATED: college_id is now optional
     struct CreateProfileRequest: Encodable {
         let user_id: Int
         let study_area_id: Int
         let course_ids: [Int]
         let study_time_ids: [Int]
         let major_ids: [Int]
+        let name: String
+        let college_id: Int?
     }
     
     struct ProfileDTO: Decodable {
@@ -325,6 +299,8 @@ final class APIManager {
         let course_ids: [Int]?
         let study_time_ids: [Int]?
         let major_ids: [Int]?
+        let name: String?
+        let college_id: Int?
     }
     
     struct CreateProfileResult {
@@ -384,15 +360,20 @@ final class APIManager {
     struct RichProfileDTO: Decodable {
         struct Course: Decodable { let id: Int?; let code: String? }
         struct Major: Decodable { let id: Int?; let name: String? }
+        struct Minor: Decodable { let id: Int?; let name: String? }
         struct StudyArea: Decodable { let id: Int?; let name: String? }
         struct StudyTime: Decodable { let id: Int?; let name: String? }
+        struct College: Decodable { let id: Int?; let name: String? }
         
         let id: Int?
         let user_id: Int?
+        let name: String?
         let courses: [Course]?
         let majors: [Major]?
+        let minors: [Minor]?
         let study_area: StudyArea?
         let study_times: [StudyTime]?
+        let college: College?
         
         let has_profile_image_blob: Bool?
         let profile_image_blob_base64: String?
@@ -695,6 +676,95 @@ final class APIManager {
             }
     }
     
+    // MARK: - Colleges API
+    struct CollegeDTO: Decodable {
+        let id: Int?
+        let name: String?
+    }
+    struct CreateCollegeRequest: Encodable {
+        let name: String
+    }
+    struct CreateCollegeResult {
+        let college: CollegeDTO?
+        let rawData: Data?
+        let statusCode: Int
+    }
+    
+    func createCollege(name: String, completion: @escaping (Result<CreateCollegeResult, APIError>) -> Void) {
+        let path = "colleges/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        let payload = CreateCollegeRequest(name: name)
+        guard let body = try? encoder.encode(payload) else {
+            completion(.failure(.decodingFailed)); return
+        }
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        
+        session.request(
+            url,
+            method: .post,
+            parameters: nil,
+            encoding: JSONDataEncoding(data: body),
+            headers: headers
+        )
+        .validate(statusCode: 200..<600)
+        .responseData { [weak self] response in
+            guard let self else { return }
+            let status = response.response?.statusCode ?? -1
+            switch response.result {
+            case .success(let data):
+                if (200...299).contains(status) {
+                    let college = try? self.decoder.decode(CollegeDTO.self, from: data)
+                    completion(.success(CreateCollegeResult(college: college, rawData: data, statusCode: status)))
+                } else {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message)))
+                }
+            case .failure(let afError):
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: status, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+        }
+    }
+    
+    func getColleges(completion: @escaping (Result<[CollegeDTO], APIError>) -> Void) {
+        let path = "colleges/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL)); return
+        }
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if (200...299).contains(status) {
+                        if let arr = try? self.decoder.decode([CollegeDTO].self, from: data) {
+                            completion(.success(arr))
+                        } else if let single = try? self.decoder.decode(CollegeDTO.self, from: data) {
+                            completion(.success([single]))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+    }
+    
     struct UserMatchDTO: Decodable {
         let match_id: Int?
         let matched_user: UserDTO?
@@ -731,20 +801,44 @@ final class APIManager {
             }
     }
     
+    // NEW: Get a user by id (with trailing slash)
+    func getUser(id: Int, completion: @escaping (Result<UserDTO, APIError>) -> Void) {
+        let path = "users/\(id)/"
+        guard let url = URL(string: baseURL + path) else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        session.request(url, method: .get)
+            .validate(statusCode: 200..<600)
+            .responseData { [weak self] response in
+                guard let self else { return }
+                let status = response.response?.statusCode ?? -1
+                switch response.result {
+                case .success(let data):
+                    if status == 200 {
+                        if let user = try? self.decoder.decode(UserDTO.self, from: data) {
+                            completion(.success(user))
+                        } else {
+                            completion(.failure(.decodingFailed))
+                        }
+                    } else {
+                        let message = self.extractErrorMessage(from: data)
+                        completion(.failure(.requestFailed(status: status, message: message)))
+                    }
+                case .failure(let afError):
+                    completion(.failure(.unknown(afError)))
+                }
+            }
+    }
     
-    // MARK: - Swipes
+    // MARK: - Swipe APIs
     struct SwipeRequest: Encodable {
         let swiper_id: Int
         let target_id: Int
         let status: String
     }
     struct SwipeResponse: Decodable {
-        struct SwipeRecord: Decodable {
-            let swiper_id: Int?
-            let target_id: Int?
-            let status: String?
-        }
-        let swipe_recorded: SwipeRecord?
         let match_found: Bool?
         let new_match_id: Int?
     }
@@ -752,20 +846,19 @@ final class APIManager {
     func recordSwipe(swiperId: Int, targetId: Int, status: String, completion: @escaping (Result<SwipeResponse, APIError>) -> Void) {
         let path = "swipes/"
         guard let url = URL(string: baseURL + path) else {
-            completion(.failure(.invalidURL)); return
+            completion(.failure(.invalidURL))
+            return
         }
         let payload = SwipeRequest(swiper_id: swiperId, target_id: targetId, status: status)
-        
-        // TEMP LOG: payload
-        print("[Swipe] POST \(baseURL)\(path) payload = { swiper_id: \(swiperId), target_id: \(targetId), status: \(status) }")
-        
         guard let body = try? encoder.encode(payload) else {
-            completion(.failure(.decodingFailed)); return
+            completion(.failure(.decodingFailed))
+            return
         }
         let headers: HTTPHeaders = [
             "Content-Type": "application/json",
             "Accept": "application/json"
         ]
+        
         session.request(
             url,
             method: .post,
@@ -777,53 +870,30 @@ final class APIManager {
         .responseData { [weak self] response in
             guard let self else { return }
             let statusCode = response.response?.statusCode ?? -1
-            
-            // TEMP LOG: raw response body for troubleshooting
-            if let data = response.data, let raw = String(data: data, encoding: .utf8) {
-                print("[Swipe] HTTP \(statusCode) raw response: \(raw)")
-            } else {
-                print("[Swipe] HTTP \(statusCode) no response body")
-            }
-            
             switch response.result {
             case .success(let data):
                 if (200...299).contains(statusCode) {
                     if let res = try? self.decoder.decode(SwipeResponse.self, from: data) {
-                        print("[Swipe] Decoded response: match_found=\(res.match_found ?? false), new_match_id=\(res.new_match_id ?? -1)")
                         completion(.success(res))
                     } else {
-                        print("[Swipe] Decoding failed for SwipeResponse")
                         completion(.failure(.decodingFailed))
                     }
                 } else {
                     let message = self.extractErrorMessage(from: data)
-                    print("[Swipe] Request failed status=\(statusCode) message=\(message ?? "nil")")
                     completion(.failure(.requestFailed(status: statusCode, message: message)))
                 }
             case .failure(let afError):
-                print("[Swipe] Network error: \(afError.localizedDescription)")
-                completion(.failure(.unknown(afError)))
+                if let data = response.data {
+                    let message = self.extractErrorMessage(from: data)
+                    completion(.failure(.requestFailed(status: statusCode, message: message ?? afError.localizedDescription)))
+                } else {
+                    completion(.failure(.unknown(afError)))
+                }
             }
         }
     }
-    
-    private func extractTopLevelID(from data: Data) -> Int? {
-        if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-            if let id = dict["id"] as? Int { return id }
-            if let user = dict["user"] as? [String: Any], let id = user["id"] as? Int { return id }
-        }
-        return nil
-    }
-    
-    private func extractErrorMessage(from data: Data) -> String? {
-        if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-            if let msg = dict["error"] as? String { return msg }
-            if let msg = dict["message"] as? String { return msg }
-            if let detail = dict["detail"] as? String { return detail }
-        }
-        return nil
-    }
 }
+
 extension APIManager {
 
     // MARK: - Upload Profile Image (Alamofire multipart, preserves cookies/auth)
@@ -832,8 +902,6 @@ extension APIManager {
         guard let url = URL(string: baseURL + path) else { return false }
         guard let imageData = image.jpegData(compressionQuality: 0.8) else { return false }
 
-        // Use the same session (with cookies/timeouts) and proper multipart builder.
-        // Backend requires field name "image".
         return await withCheckedContinuation { continuation in
             session.upload(
                 multipartFormData: { form in
@@ -845,8 +913,6 @@ extension APIManager {
             .validate(statusCode: 200..<600)
             .responseData { response in
                 let status = response.response?.statusCode ?? -1
-
-                // Log server response body when not successful
                 if !(200...299).contains(status) {
                     if let data = response.data, let raw = String(data: data, encoding: .utf8) {
                         print("[UploadImage] HTTP \(status) body: \(raw)")
@@ -854,7 +920,6 @@ extension APIManager {
                         print("[UploadImage] HTTP \(status) no body")
                     }
                 }
-
                 switch response.result {
                 case .success:
                     continuation.resume(returning: (200...299).contains(status))
@@ -881,8 +946,25 @@ extension APIManager {
             return nil
         }
     }
+    
+    // MARK: - Helpers used across requests
+    func extractErrorMessage(from data: Data) -> String? {
+        if let obj = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            if let s = obj["detail"] as? String { return s }
+            if let s = obj["error"] as? String { return s }
+            if let s = obj["message"] as? String { return s }
+        }
+        return String(data: data, encoding: .utf8)
+    }
+    
+    func extractTopLevelID(from data: Data) -> Int? {
+        if let obj = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            if let id = obj["id"] as? Int { return id }
+            if let s = obj["id"] as? String, let i = Int(s) { return i }
+        }
+        return nil
+    }
 }
-
 
 struct JSONDataEncoding: ParameterEncoding {
     private let data: Data

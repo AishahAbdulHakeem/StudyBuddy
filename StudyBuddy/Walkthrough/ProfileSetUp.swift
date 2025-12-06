@@ -13,7 +13,7 @@ struct ProfileSetUp: View {
     @EnvironmentObject var session: SessionStore
 
     // MARK: - State
-    @State private var name: String = ""
+    // Removed local name state. We bind directly to session.profile.name now.
     @State private var major: String = ""
     @State private var favoriteArea: String = ""
     
@@ -42,7 +42,7 @@ struct ProfileSetUp: View {
             }
         }
     }
-    @State private var selectedTimes: Set<StudyTime> = []
+    @State private var selectedTimes: Set<StudyTime> = Set()
     
     // Photo
     @State private var selectedItem: PhotosPickerItem?
@@ -67,7 +67,7 @@ struct ProfileSetUp: View {
     
     // Enable Next
     private var canContinue: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !session.profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !major.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && !favoriteArea.isEmpty
         && studyAreaId != nil
@@ -108,7 +108,6 @@ struct ProfileSetUp: View {
                     .padding(.top, 16)
                     .padding(.horizontal, 20)
                     
-                 
                     VStack {
                         PhotosPicker(selection: $selectedItem, matching: .images) {
                             ZStack {
@@ -143,7 +142,7 @@ struct ProfileSetUp: View {
                     
                     // Form fields
                     VStack(spacing: 14) {
-                        TextField("Name", text: $name)
+                        TextField("Name", text: $session.profile.name)
                             .textContentType(.name)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
@@ -318,25 +317,26 @@ struct ProfileSetUp: View {
             submitError = "Missing user id."
             return
         }
+        guard !session.profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            submitError = "Please enter your name."
+            return
+        }
         guard let areaId = studyAreaId else {
             submitError = "Please select a study area."
             return
         }
-        
         
         guard let majorID = await session.resolveMajorID(from: major) else {
             submitError = "Please enter a valid major."
             return
         }
         
-      
         let courseIDs = await session.resolveCourseIDs(from: courses)
         if courseIDs.isEmpty {
             submitError = "Please add at least one valid course (e.g., CS3110)."
             return
         }
         
-       
         let timeIDs = session.resolveStudyTimeIDs(from: selectedTimes)
         if timeIDs.isEmpty {
             submitError = "Please select at least one study time."
@@ -348,7 +348,9 @@ struct ProfileSetUp: View {
             study_area_id: areaId,
             course_ids: courseIDs,
             study_time_ids: timeIDs,
-            major_ids: [majorID]
+            major_ids: [majorID],
+            name: session.profile.name,
+            college_id: nil
         )
         let ok = await session.createOrUpdateProfile(setup: payload)
         if ok {
@@ -366,7 +368,6 @@ struct ProfileSetUp: View {
         } else {
             submitError = session.errorMessage ?? "Failed to save profile."
         }
-
     }
 
     private func toggle(_ time: StudyTime) {
