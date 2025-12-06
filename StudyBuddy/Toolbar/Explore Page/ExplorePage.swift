@@ -124,9 +124,9 @@ struct ExplorePage: View {
                 VStack {
                     Spacer()
                     ZStack {
-                        HStack(spacing: 40) {
+                        HStack(spacing: 60) {
                             NavigationLink(destination: HomePage()) {
-                                Image("StudyBuddyLogo")
+                                Image(.homeInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
@@ -134,21 +134,25 @@ struct ExplorePage: View {
                             }
 
                             NavigationLink(destination: ExplorePage()) {
-                                Image(systemName: "hand.raised.fill")
+                                Image(.matchActive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
+
                             }
+                            
                             NavigationLink(destination: MessagesPage()) {
-                                Image(systemName: "message")
+                                Image(.messagesInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
+
                             }
+                            
                             NavigationLink(destination: ProfilePage()) {
-                                Image(systemName: "person.circle.fill")
+                                Image(.profileInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)

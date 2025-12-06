@@ -34,7 +34,7 @@ struct HomePage: View {
                     HStack(spacing: 60) {
                             
                             NavigationLink(destination: HomePage()) {
-                                Image("StudyBuddyLogo")
+                                Image(.homePageActive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
@@ -78,7 +78,7 @@ struct HomePage: View {
                       )
             }
             .ignoresSafeArea()
-            .navigationBarBackButtonHidden(true) // Disable back button on Home page
+            .navigationBarBackButtonHidden(true) 
         }
     }
 }

@@ -230,30 +230,35 @@ struct ProfilePage: View {
                 VStack {
                     Spacer()
                     ZStack {
-                        HStack(spacing: 40) {
+                        HStack(spacing: 60) {
                             NavigationLink(destination: HomePage()) {
-                                Image("StudyBuddyLogo")
+                                Image(.homeInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
                             }
+
                             NavigationLink(destination: ExplorePage()) {
-                                Image(systemName: "hand.raised.fill")
+                                Image(.matchInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
+
                             }
+                            
                             NavigationLink(destination: MessagesPage()) {
-                                Image(systemName: "message")
+                                Image(.messagesInactive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
                                     .foregroundStyle(Color(.white))
+
                             }
+                            
                             NavigationLink(destination: ProfilePage()) {
-                                Image(systemName: "person.circle.fill")
+                                Image(.profileActive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
