@@ -86,7 +86,6 @@ struct MessagesPage: View {
                                     .foregroundStyle(Color(.white))
 
                             }
-
                             
                             NavigationLink(destination: MessagesPage()) {
                                 Image(.messagesActive)
