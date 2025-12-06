@@ -34,7 +34,7 @@ struct HomePage: View {
                     HStack(spacing: 60) {
                             
                             NavigationLink(destination: HomePage()) {
-                                Image(.homePageActive)
+                                Image(.homeActive)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 30, height: 30)
