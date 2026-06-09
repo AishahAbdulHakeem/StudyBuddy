@@ -25,15 +25,6 @@ The goal of this project is to make academic collaboration more accessible. Inst
 - Created a simple, student-focused concept for academic networking
 - Built the foundation for profile browsing and study group discovery
 
-## Tech Stack
-
-Update this section with the tools used in the project, such as:
-
-- Frontend: HTML, CSS, JavaScript, React, or another framework
-- Backend: Python, Node.js, Flask, Express, or another backend tool
-- Database: Firebase, MongoDB, SQL, or another database
-- Other tools: APIs, authentication, deployment tools, or design tools
-
 ## Future Improvements
 
 - Add user authentication
